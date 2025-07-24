@@ -1,0 +1,36 @@
+# azure-pipelines/prod-pipeline.yml
+
+trigger:
+  branches:
+    include:
+      - main
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: echo Building the application...
+            displayName: 'Build Step'
+
+  - stage: Test
+    jobs:
+      - job: Test
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: echo Running tests...
+            displayName: 'Test Step'
+
+  - stage: Deploy
+    jobs:
+      - job: Deploy
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: echo Deploying to production...
+            displayName: 'Deploy Step'
+          - script: echo Performing production readiness checks...
+            displayName: 'Production Readiness Check'
