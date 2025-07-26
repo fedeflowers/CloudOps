@@ -7,13 +7,7 @@ pool:
   name: 'Default'
 
 variables:
-  terraformVersion: '1.5.5'  # Specify the Terraform version
-  azureServiceConnection: 'azurerm'  # Azure service connection name
-  backendResourceGroup: 'myTFResourceGroup' # Remote backend Resource Group
-  backendStorageAccount: 'fedeflowerstorage'  # Remote backend storage account
-  backendContainer: 'tfstate'  # Remote backend storage container
-  backendKey: 'terraform.tfstate'  # State file name in remote backend
-  workingdir: 'Basic_pipeline/terraform'
+  - group: dev_vars
 
 stages:
   # Stage 1: Initialization (init, validate, lint)

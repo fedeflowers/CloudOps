@@ -1,4 +1,2 @@
-variable_name = "dev_value"
-resource_group_name = "dev-resource-group"
+resource_group_name = "first_resource_group"
 location = "westeurope"
-vm_size = "Standard_DS1_v2"
