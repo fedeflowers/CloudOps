@@ -36,7 +36,7 @@ stages:
               backendAzureRmContainerName: $(backendContainer)
               backendAzureRmKey: $(backendKey)
               command: 'init'
-              workingDirectory: '$(tf_working_dir)'
+              workingDirectory: 'terraform'
             displayName: 'Terraform Init'
 
           - task: TerraformTaskV4@4
