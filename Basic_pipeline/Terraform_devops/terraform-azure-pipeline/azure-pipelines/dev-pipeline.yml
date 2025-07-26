@@ -27,6 +27,16 @@ stages:
               terraformVersion: '$(terraformVersion)'
             displayName: 'Install Terraform'
 
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host "Current PATH: $env:PATH"
+                Write-Host "Terraform location:"
+                where.exe terraform
+                terraform version
+            displayName: 'Verify Terraform PATH'
+            
           - task: TerraformTaskV4@4
             inputs:
               provider: 'azurerm'
