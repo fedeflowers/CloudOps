@@ -6,7 +6,7 @@ trigger:
       - main
 
 variables:
-  tf_working_dir: '$(System.DefaultWorkingDirectory)/terraform'
+  tf_working_dir: '$(System.DefaultWorkingDirectory)/Basic_Pipeline/Terraform_devops/terraform'
   environment: 'dev'
   terraformVersion: '1.5.5'  # Specify the Terraform version
   azureServiceConnection: 'azurerm'  # Azure service connection name
