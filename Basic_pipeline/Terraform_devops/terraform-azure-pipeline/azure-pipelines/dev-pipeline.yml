@@ -8,12 +8,12 @@ trigger:
 variables:
   tf_working_dir: '$(System.DefaultWorkingDirectory)/terraform'
   environment: 'dev'
-  terraformVersion: '1.5.5'   # Specify the Terraform version
-  azureServiceConnection: 'azurerm'   # Azure service connection name
+  terraformVersion: '1.5.5'  # Specify the Terraform version
+  azureServiceConnection: 'azurerm'  # Azure service connection name
   backendResourceGroup: 'myTFResourceGroup' # Remote backend Resource Group
-  backendStorageAccount: 'fedeflowerstorage'   # Remote backend storage account
-  backendContainer: 'tfstate'   # Remote backend storage container
-  backendKey: 'terraform.tfstate'   # State file name in remote backend
+  backendStorageAccount: 'fedeflowerstorage'  # Remote backend storage account
+  backendContainer: 'tfstate'  # Remote backend storage container
+  backendKey: 'terraform.tfstate'  # State file name in remote backend
 
 stages:
   - stage: TerraformDeployment
@@ -27,45 +27,40 @@ stages:
               terraformVersion: '$(terraformVersion)'
             displayName: 'Install Terraform'
 
-          # NEW STEP: Run a simple Terraform command to verify installation
-          - script: |
-              # The TerraformInstaller task adds the terraform executable to the PATH
-              # so you can just call 'terraform' directly.
-              # If it's a Windows agent, the shell is usually PowerShell or Cmd.
-              # For cross-platform compatibility and clarity, just 'terraform' is fine.
-              terraform --version
-            displayName: 'Verify Terraform Installation'
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "The resolved Terraform working directory is: $(tf_working_dir)"
+            displayName: 'Verify Terraform PATH'
+            
+          - task: TerraformTaskV4@4
+            inputs:
+              provider: 'azurerm'
+              backendServiceArm: $(azureServiceConnection)
+              backendAzureRmResourceGroupName: $(backendResourceGroup)
+              backendAzureRmStorageAccountName: $(backendStorageAccount)
+              backendAzureRmContainerName: $(backendContainer)
+              backendAzureRmKey: $(backendKey)
+              command: 'init'
+              workingDirectory: 'terraform'
+            displayName: 'Terraform Init'
 
-          # Commenting out subsequent Terraform tasks for initial testing
-          # You can uncomment these once the 'Verify Terraform Installation' step passes
+          - task: TerraformTaskV4@4
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '$(tf_working_dir)'
+              environmentServiceNameAzureRM: '$(azureServiceConnection)'
+              # commandOptions: '-var-file="environments/$(environment)/terraform.tfvars"'
+            displayName: 'Terraform Plan'
 
-          # - task: TerraformTaskV4@4
-          #   inputs:
-          #     provider: 'azurerm'
-          #     backendServiceArm: $(azureServiceConnection)
-          #     backendAzureRmResourceGroupName: $(backendResourceGroup)
-          #     backendAzureRmStorageAccountName: $(backendStorageAccount)
-          #     backendAzureRmContainerName: $(backendContainer)
-          #     backendAzureRmKey: $(backendKey)
-          #     command: 'init'
-          #     workingDirectory: '$(tf_working_dir)'
-          #   displayName: 'Terraform Init'
-
-          # - task: TerraformTaskV4@4
-          #   inputs:
-          #     provider: 'azurerm'
-          #     command: 'plan'
-          #     workingDirectory: '$(tf_working_dir)'
-          #     environmentServiceNameAzureRM: '$(azureServiceConnection)'
-          #     # commandOptions: '-var-file="environments/$(environment)/terraform.tfvars"'
-          #   displayName: 'Terraform Plan'
-
-          # - task: TerraformTaskV4@4
-          #   inputs:
-          #     provider: 'azurerm'
-          #     command: 'apply'
-          #     workingDirectory: '$(tf_working_dir)'
-          #     environmentServiceNameAzureRM: '$(azureServiceConnection)'
-          #     commandOptions: '-auto-approve'
-          #     # commandOptions: '-var-file="environments/$(environment)/terraform.tfvars" -auto-approve'
-          #   displayName: 'Terraform Apply'
+          - task: TerraformTaskV4@4
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              workingDirectory: '$(tf_working_dir)'
+              environmentServiceNameAzureRM: '$(azureServiceConnection)'
+              commandOptions: '-auto-approve'
+              # commandOptions: '-var-file="environments/$(environment)/terraform.tfvars" -auto-approve'
+            displayName: 'Terraform Apply'
