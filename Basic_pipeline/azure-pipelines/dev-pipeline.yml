@@ -43,7 +43,7 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'validate'  # Validate Terraform configuration
-              workingDirectory: 'terraform'
+              workingDirectory: '$(workingdir)'
             displayName: 'VALIDATE task'
 
           - task: TerraformTaskV4@4
