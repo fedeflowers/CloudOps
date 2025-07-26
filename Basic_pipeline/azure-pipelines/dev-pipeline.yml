@@ -14,6 +14,7 @@ variables:
   backendContainer: 'tfstate'  # Remote backend storage container
   backendKey: 'terraform.tfstate'  # State file name in remote backend
   workingdir: 'Basic_pipeline/terraform'
+  environment: 'dev' # Default to 'dev'
 
 stages:
   # Stage 1: Initialization (init, validate, lint)
@@ -52,6 +53,7 @@ stages:
               provider: 'azurerm'
               command: 'plan'  # Run terraform plan
               environmentServiceNameAzureRM: $(azureServiceConnection)  # Azure service connection for authentication
+              commandOptions: '-var-file="environments/$(environment)/terraform.tfvars"'
               workingDirectory: $(workingdir)  # Set the working directory
             
           - task: TerraformTaskV4@4
@@ -59,6 +61,6 @@ stages:
             inputs:
               provider: 'azurerm'
               command: 'apply'  # Run terraform apply
-              commandOptions: '--auto-approve'
+              commandOptions: '--auto-approve -var-file="environments/$(environment)/terraform.tfvars"'
               environmentServiceNameAzureRM: $(azureServiceConnection)  # Azure service connection for authentication
               workingDirectory: $(workingdir)  # Set the working directory
