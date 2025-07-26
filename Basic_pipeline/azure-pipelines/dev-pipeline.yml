@@ -13,6 +13,7 @@ variables:
   backendStorageAccount: 'fedeflowerstorage'  # Remote backend storage account
   backendContainer: 'tfstate'  # Remote backend storage container
   backendKey: 'terraform.tfstate'  # State file name in remote backend
+  workingdir: 'Basic_pipeline/terraform'
 
 stages:
   # Stage 1: Initialization (init, validate, lint)
@@ -34,7 +35,7 @@ stages:
               backendAzureRmContainerName: $(backendContainer)
               backendAzureRmKey: $(backendKey)
               command: 'init'  # Initialize Terraform
-              workingDirectory: 'terraform'  # Set the working directory
+              workingDirectory: $(workingdir)  # Set the working directory
 
           # Validate Terraform configuration
           - task: TerraformTaskV4@4
@@ -47,7 +48,7 @@ stages:
               provider: 'azurerm'
               command: 'plan'  # Run terraform plan
               environmentServiceNameAzureRM: $(azureServiceConnection)  # Azure service connection for authentication
-              workingDirectory: 'terraform'  # Set the working directory
+              workingDirectory: $(workingdir)  # Set the working directory
           - task: TerraformTaskV4@4
             inputs:
               provider: 'azurerm'
@@ -55,4 +56,4 @@ stages:
               backendServiceArm: $(azureServiceConnection)
               commandOptions: '--auto-approve'
               environmentServiceNameAzureRM: $(azureServiceConnection)  # Azure service connection for authentication
-              workingDirectory: 'terraform'  # Set the working directory
+              workingDirectory: $(workingdir)  # Set the working directory
