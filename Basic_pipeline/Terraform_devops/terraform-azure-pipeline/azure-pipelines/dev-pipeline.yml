@@ -22,29 +22,29 @@ stages:
         pool:
           name: 'Default'
         steps:
-          - task: TerraformInstaller@0
-            inputs:
-              terraformVersion: '$(terraformVersion)'
-            displayName: 'Install Terraform'
-
-          - task: PowerShell@2
-            inputs:
-              targetType: 'inline'
-              script: |
-                echo "The resolved Terraform working directory is: $(tf_working_dir)"
-            displayName: 'Verify Terraform PATH'
-            
-          # - task: TerraformTaskV4@4
+          # - task: TerraformInstaller@0
           #   inputs:
-          #     provider: 'azurerm'
-          #     backendServiceArm: $(azureServiceConnection)
-          #     backendAzureRmResourceGroupName: $(backendResourceGroup)
-          #     backendAzureRmStorageAccountName: $(backendStorageAccount)
-          #     backendAzureRmContainerName: $(backendContainer)
-          #     backendAzureRmKey: $(backendKey)
-          #     command: 'init'
-          #     workingDirectory: 'terraform'
-          #   displayName: 'Terraform Init'
+          #     terraformVersion: '$(terraformVersion)'
+          #   displayName: 'Install Terraform'
+
+          # - task: PowerShell@2
+          #   inputs:
+          #     targetType: 'inline'
+          #     script: |
+          #       echo "The resolved Terraform working directory is: $(tf_working_dir)"
+          #   displayName: 'Verify Terraform PATH'
+            
+          - task: TerraformTaskV4@4
+            inputs:
+              provider: 'azurerm'
+              backendServiceArm: $(azureServiceConnection)
+              backendAzureRmResourceGroupName: $(backendResourceGroup)
+              backendAzureRmStorageAccountName: $(backendStorageAccount)
+              backendAzureRmContainerName: $(backendContainer)
+              backendAzureRmKey: $(backendKey)
+              command: 'init'
+              workingDirectory: 'terraform'
+            displayName: 'Terraform Init'
 
           - task: TerraformTaskV4@4
             inputs:
