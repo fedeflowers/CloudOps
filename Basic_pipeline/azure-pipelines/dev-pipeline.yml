@@ -27,6 +27,7 @@ stages:
 
           # Initialize Terraform
           - task: TerraformTaskV4@4
+            displayName: 'INIT task'
             inputs:
               provider: 'azurerm'
               backendServiceArm: $(azureServiceConnection)
@@ -35,35 +36,29 @@ stages:
               backendAzureRmContainerName: $(backendContainer)
               backendAzureRmKey: $(backendKey)
               command: 'init'  # Initialize Terraform
-              commandOptions: '--auto-approve'
               workingDirectory: $(workingdir)  # Set the working directory
-            displayName: 'INIT task'
 
           # Validate Terraform configuration
           - task: TerraformTaskV4@4
+            displayName: 'VALIDATE task'
             inputs:
               provider: 'azurerm'
               command: 'validate'  # Validate Terraform configuration
               workingDirectory: '$(workingdir)'
-            displayName: 'VALIDATE task'
 
           - task: TerraformTaskV4@4
+            displayName: 'PLAN task'
             inputs:
               provider: 'azurerm'
               command: 'plan'  # Run terraform plan
-              commandOptions: '--auto-approve'
               environmentServiceNameAzureRM: $(azureServiceConnection)  # Azure service connection for authentication
               workingDirectory: $(workingdir)  # Set the working directory
-            displayName: 'PLAN task'
             
           - task: TerraformTaskV4@4
+            displayName: 'APPLY task'
             inputs:
               provider: 'azurerm'
               command: 'apply'  # Run terraform apply
               commandOptions: '--auto-approve'
-              backendServiceArm: $(azureServiceConnection)
-              commandOptions: '--auto-approve'
               environmentServiceNameAzureRM: $(azureServiceConnection)  # Azure service connection for authentication
               workingDirectory: $(workingdir)  # Set the working directory
-            displayName: 'APPLY task'
-            
