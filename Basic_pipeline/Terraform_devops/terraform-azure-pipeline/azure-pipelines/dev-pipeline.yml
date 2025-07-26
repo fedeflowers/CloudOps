@@ -16,15 +16,15 @@ variables:
   backendKey: 'terraform.tfstate'  # State file name in remote backend
 
 stages:
-  - stage: TerraformPlan
+  - stage: TerraformDeployment
     jobs:
-      - job: Plan
+      - job: PlanAndApply
         pool:
           vmImage: 'ubuntu-latest'
         steps:
           - task: TerraformInstaller@0
             inputs:
-              terraformVersion: 'latest'
+              terraformVersion: '$(terraformVersion)'
             displayName: 'Install Terraform'
 
           - task: TerraformTaskV4@4
@@ -35,7 +35,7 @@ stages:
               backendAzureRmStorageAccountName: $(backendStorageAccount)
               backendAzureRmContainerName: $(backendContainer)
               backendAzureRmKey: $(backendKey)
-              command: 'init'  # Initialize Terraform
+              command: 'init'
               workingDirectory: '$(tf_working_dir)'
             displayName: 'Terraform Init'
 
@@ -44,34 +44,9 @@ stages:
               provider: 'azurerm'
               command: 'plan'
               workingDirectory: '$(tf_working_dir)'
-              environmentServiceNameAzureRM: ' $(azureServiceConnection)'
+              environmentServiceNameAzureRM: '$(azureServiceConnection)'
               # commandOptions: '-var-file="environments/$(environment)/terraform.tfvars"'
             displayName: 'Terraform Plan'
-
-  - stage: TerraformApply
-    dependsOn: TerraformPlan
-    condition: succeeded()
-    jobs:
-      - job: Apply
-        pool:
-          vmImage: 'ubuntu-latest'
-        steps:
-          - task: TerraformInstaller@0
-            inputs:
-              terraformVersion: 'latest'
-            displayName: 'Install Terraform'
-
-          - task: TerraformTaskV4@4
-            inputs:
-              provider: 'azurerm'
-              backendServiceArm: $(azureServiceConnection)
-              backendAzureRmResourceGroupName: $(backendResourceGroup)
-              backendAzureRmStorageAccountName: $(backendStorageAccount)
-              backendAzureRmContainerName: $(backendContainer)
-              backendAzureRmKey: $(backendKey)
-              command: 'init'  # Initialize Terraform
-              workingDirectory: '$(tf_working_dir)'
-            displayName: 'Terraform Init'
 
           - task: TerraformTaskV4@4
             inputs:
@@ -79,5 +54,6 @@ stages:
               command: 'apply'
               workingDirectory: '$(tf_working_dir)'
               environmentServiceNameAzureRM: '$(azureServiceConnection)'
+              commandOptions: '-auto-approve'
               # commandOptions: '-var-file="environments/$(environment)/terraform.tfvars" -auto-approve'
             displayName: 'Terraform Apply'
