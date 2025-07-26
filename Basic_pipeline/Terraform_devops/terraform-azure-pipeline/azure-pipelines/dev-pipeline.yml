@@ -20,7 +20,7 @@ stages:
     jobs:
       - job: PlanAndApply
         pool:
-          vmImage: 'ubuntu-latest'
+          name: 'Default'
         steps:
           - task: TerraformInstaller@0
             inputs:
