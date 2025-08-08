@@ -39,19 +39,12 @@ stages:
         workingDirectory: $(workingdir)
 
     - task: TerraformTaskV4@4
-      displayName: VALIDATE
-      inputs:
-        provider: azurerm
-        command: validate
-        workingDirectory: $(workingdir)
-
-    - task: TerraformTaskV4@4
       displayName: PLAN
       inputs:
         provider: azurerm
         command: plan
         environmentServiceNameAzureRM: $(azureServiceConnection)
-        commandOptions: -out=tfplan -var-file="environments/$(environment)/terraform.tfvars"
+        commandOptions: -out=tfplan -var-file="envs/$(environment)/terraform.tfvars"
         workingDirectory: $(workingdir)
 
     - script: |
