@@ -1,15 +1,11 @@
 trigger:
   branches:
-    include: [ main ]
-  paths:
-    include: [ MLOps\Azure\azure-mlops-project\azure\terraform ]   # adjust to your folder
+    include: main
 
 pr:
   branches:
-    include: [ main ]
-  paths:
-    include: [ MLOps\Azure\azure-mlops-project\azure\terraform ]
-
+    include: main
+    
 pool:
   name: 'Default'
 
