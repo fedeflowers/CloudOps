@@ -53,3 +53,4 @@ stages:
     - publish: $(Build.ArtifactStagingDirectory)
       artifact: tfplan
       displayName: Publish plan artifact
+      
