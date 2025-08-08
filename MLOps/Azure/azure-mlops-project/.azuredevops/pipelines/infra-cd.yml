@@ -6,6 +6,9 @@ resources:
       source: "CI infra"
       branch: main
 
+variables:
+  - group: dev_vars
+
 pool:
   vmImage: ubuntu-latest
 
