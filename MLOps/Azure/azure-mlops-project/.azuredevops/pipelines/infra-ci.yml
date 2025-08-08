@@ -36,7 +36,7 @@ stages:
         command: init
         workingDirectory: $(workingdir)
 
-#unlock if needed
+#unlock state if needed
     # - script: |
     #     set -e
     #     terraform init -input=false
@@ -53,12 +53,30 @@ stages:
         commandOptions: -out=tfplan -var-file="envs/$(environment)/terraform.tfvars"
         workingDirectory: $(workingdir)
 
-    - script: |
-        mkdir -p $(Build.ArtifactStagingDirectory)
-        cp $(workingdir)/tfplan $(Build.ArtifactStagingDirectory)/
-      displayName: Collect plan artifact
+    # Export human-readable JSON too 
+    - task: PowerShell@2
+      displayName: Export plan as JSON (optional)
+      condition: and(succeeded(), exists('$(workingdir)\tfplan'))
+      inputs:
+        targetType: inline
+        workingDirectory: $(workingdir)
+        script: |
+          terraform show -json tfplan > "$(Build.ArtifactStagingDirectory)\tfplan.json"
 
+    # Collect the binary tfplan (Windows-safe)
+    - task: PowerShell@2
+      displayName: Collect plan artifact
+      condition: and(succeeded(), exists('$(workingdir)\tfplan'))
+      inputs:
+        targetType: inline
+        script: |
+          New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)" | Out-Null
+          Copy-Item -Path "$(workingdir)\tfplan" -Destination "$(Build.ArtifactStagingDirectory)\tfplan"
+
+    # Publish only if we actually have something
     - publish: $(Build.ArtifactStagingDirectory)
-      artifact: tfplan
       displayName: Publish plan artifact
+      artifact: tfplan
+      condition: and(succeeded(), or(exists('$(Build.ArtifactStagingDirectory)\tfplan'),
+                                    exists('$(Build.ArtifactStagingDirectory)\tfplan.json')))
 
