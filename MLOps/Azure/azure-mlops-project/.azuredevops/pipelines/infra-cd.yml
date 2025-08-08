@@ -37,7 +37,7 @@ stages:
         provider: azurerm
         command: plan
         environmentServiceNameAzureRM: $(azureServiceConnection)
-        commandOptions: -out=tfplan -var-file="environments/$(environment)/terraform.tfvars"
+        commandOptions: -out=tfplan -var-file="envs/$(environment)/terraform.tfvars"
         workingDirectory: $(workingdir)
 
     - task: TerraformTaskV4@4
