@@ -39,9 +39,7 @@ stages:
     - script: |
         set -e
         terraform init -input=false
-        LOCK_ID="5db31b9e-e804-693a-31bf-0f42ea8e3723"
-        echo "Forcing unlock on state with ID: $LOCK_ID (will ignore errors if not locked)"
-        terraform force-unlock -force "$LOCK_ID" || true
+        terraform force-unlock -force "5db31b9e-e804-693a-31bf-0f42ea8e3723" || true
       displayName: Terraform force-unlock (always)
       workingDirectory: $(workingdir)
           
@@ -51,7 +49,7 @@ stages:
         provider: azurerm
         command: plan
         environmentServiceNameAzureRM: $(azureServiceConnection)
-        commandOptions: -out=tfplan -var-file="envs/$(environment)/terraform.tfvars"
+        commandOptions: -out=tfplan -var-file="envs/$(environment)/terraform.tfvars" -lock-timeout=1m
         workingDirectory: $(workingdir)
 
     - script: |
