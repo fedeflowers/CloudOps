@@ -10,49 +10,54 @@ variables:
   - group: dev_vars
 
 pool:
-  vmImage: ubuntu-latest
+  name: 'Default'
 
-steps:
-  # (Optional but safest) use the exact commit from the CI run that produced the plan
-  - checkout: self
-    persistCredentials: true
+stages:
+- stage: CD
+  displayName: Infra CD (apply saved plan)
+  jobs:
+  - job: TerraformApply
+    displayName: Terraform Apply
+    steps:
+    # (Optional but safest) use the exact commit from the CI run that produced the plan
+    - checkout: self
+      persistCredentials: true
 
-  - script: |
-      set -e
-      git fetch --all --prune
-      echo "Checking out CI commit: $(resources.pipeline.ci.sourceCommit)"
-      git checkout $(resources.pipeline.ci.sourceCommit)
-      git rev-parse --short HEAD
-    displayName: Checkout CI commit
+    - script: |
+        set -e
+        git fetch --all --prune
+        echo "Checking out CI commit: $(resources.pipeline.ci.sourceCommit)"
+        git checkout $(resources.pipeline.ci.sourceCommit)
+        git rev-parse --short HEAD
+      displayName: Checkout CI commit
 
-  # Download the tfplan artifact from CI
-  - download: ci
-    artifact: tfplan
-    displayName: Download tfplan artifact
+    # Download the tfplan artifact from CI
+    - download: ci
+      artifact: tfplan
+      displayName: Download tfplan artifact
 
-  - task: TerraformInstaller@0
-    displayName: Install Terraform
-    inputs:
-      terraformVersion: $(terraformVersion)
+    - task: TerraformInstaller@0
+      displayName: Install Terraform
+      inputs:
+        terraformVersion: $(terraformVersion)
 
-  - task: TerraformTaskV4@4
-    displayName: INIT (same backend as CI)
-    inputs:
-      provider: azurerm
-      backendServiceArm: $(azureServiceConnection)
-      backendAzureRmResourceGroupName: $(backendResourceGroup)
-      backendAzureRmStorageAccountName: $(backendStorageAccount)
-      backendAzureRmContainerName: $(backendContainer)
-      backendAzureRmKey: $(backendKey)
-      command: init
-      workingDirectory: $(workingdir)
+    - task: TerraformTaskV4@4
+      displayName: INIT (same backend as CI)
+      inputs:
+        provider: azurerm
+        backendServiceArm: $(azureServiceConnection)
+        backendAzureRmResourceGroupName: $(backendResourceGroup)
+        backendAzureRmStorageAccountName: $(backendStorageAccount)
+        backendAzureRmContainerName: $(backendContainer)
+        backendAzureRmKey: $(backendKey)
+        command: init
+        workingDirectory: $(workingdir)
 
-  # Apply the exact reviewed plan file (no prompt)
-  - task: TerraformTaskV4@4
-    displayName: APPLY saved plan
-    inputs:
-      provider: azurerm
-      command: apply
-      environmentServiceNameAzureRM: $(azureServiceConnection)
-      commandOptions: '$(Pipeline.Workspace)/ci/tfplan/tfplan'
-      workingDirectory: $(workingdir)
+    - task: TerraformTaskV4@4
+      displayName: APPLY saved plan
+      inputs:
+        provider: azurerm
+        command: apply
+        environmentServiceNameAzureRM: $(azureServiceConnection)
+        commandOptions: '$(Pipeline.Workspace)/ci/tfplan/tfplan'
+        workingDirectory: $(workingdir)
