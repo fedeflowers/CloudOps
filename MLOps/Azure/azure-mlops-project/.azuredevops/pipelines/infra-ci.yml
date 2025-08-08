@@ -36,12 +36,13 @@ stages:
         command: init
         workingDirectory: $(workingdir)
 
-    - script: |
-        set -e
-        terraform init -input=false
-        terraform force-unlock -force "5db31b9e-e804-693a-31bf-0f42ea8e3723" || true
-      displayName: Terraform force-unlock (always)
-      workingDirectory: $(workingdir)
+#unlock if needed
+    # - script: |
+    #     set -e
+    #     terraform init -input=false
+    #     terraform force-unlock -force "5db31b9e-e804-693a-31bf-0f42ea8e3723" || true
+    #   displayName: Terraform force-unlock (always)
+    #   workingDirectory: $(workingdir)
           
     - task: TerraformTaskV4@4
       displayName: PLAN
@@ -49,7 +50,7 @@ stages:
         provider: azurerm
         command: plan
         environmentServiceNameAzureRM: $(azureServiceConnection)
-        commandOptions: -out=tfplan -var-file="envs/$(environment)/terraform.tfvars" -lock-timeout=1m
+        commandOptions: -out=tfplan -var-file="envs/$(environment)/terraform.tfvars"
         workingDirectory: $(workingdir)
 
     - script: |
