@@ -53,30 +53,38 @@ stages:
         commandOptions: -out=tfplan -var-file="envs/$(environment)/terraform.tfvars"
         workingDirectory: $(workingdir)
 
-    # Export human-readable JSON too 
+    # Export human-readable JSON (only if tfplan exists)
     - task: PowerShell@2
       displayName: Export plan as JSON (optional)
-      condition: and(succeeded(), exists('$(workingdir)\tfplan'))
       inputs:
         targetType: inline
         workingDirectory: $(workingdir)
         script: |
-          terraform show -json tfplan > "$(Build.ArtifactStagingDirectory)\tfplan.json"
+          if (Test-Path "tfplan") {
+            New-Item -ItemType Directory -Force -Path "$env:BUILD_ARTIFACTSTAGINGDIRECTORY" | Out-Null
+            terraform show -json tfplan > "$env:BUILD_ARTIFACTSTAGINGDIRECTORY\tfplan.json"
+            Write-Host "Wrote $env:BUILD_ARTIFACTSTAGINGDIRECTORY\tfplan.json"
+          } else {
+            Write-Host "No tfplan found; skipping JSON export."
+          }
 
-    # Collect the binary tfplan (Windows-safe)
+    # Collect the binary tfplan (only if it exists)
     - task: PowerShell@2
       displayName: Collect plan artifact
-      condition: and(succeeded(), exists('$(workingdir)\tfplan'))
       inputs:
         targetType: inline
         script: |
           New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)" | Out-Null
-          Copy-Item -Path "$(workingdir)\tfplan" -Destination "$(Build.ArtifactStagingDirectory)\tfplan"
+          if (Test-Path "$(workingdir)\tfplan") {
+            Copy-Item -Path "$(workingdir)\tfplan" -Destination "$(Build.ArtifactStagingDirectory)\tfplan" -Force
+            Write-Host "Copied tfplan to artifact staging."
+          } else {
+            Write-Host "No tfplan found; skipping copy."
+          }
 
-    # Publish only if we actually have something
+    # Publish (it’s fine if the folder is empty)
     - publish: $(Build.ArtifactStagingDirectory)
       displayName: Publish plan artifact
       artifact: tfplan
-      condition: and(succeeded(), or(exists('$(Build.ArtifactStagingDirectory)\tfplan'),
-                                    exists('$(Build.ArtifactStagingDirectory)\tfplan.json')))
+      condition: succeeded()
 
