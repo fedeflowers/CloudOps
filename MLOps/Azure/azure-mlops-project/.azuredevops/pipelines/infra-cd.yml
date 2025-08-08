@@ -1,24 +1,50 @@
-trigger:
-  none
+trigger: none
 
-parameters:
-  - name: environment
-    type: string
-    default: dev
-    values: [ dev, prod ]
+pool:
+  name: 'Default'
 
-pool: { vmImage: ubuntu-latest }
+variables:
+  - group: dev_vars
 
-steps:
-  - task: AzureCLI@2
-    displayName: "Terraform apply"
-    inputs:
-      azureSubscription: $(AZURE_SERVICE_CONNECTION)
-      scriptType: bash
-      scriptLocation: inlineScript
-      inlineScript: |
-        set -e
-        cd azure/terraform
-        terraform init
-        terraform plan -var-file=envs/${{ parameters.environment }}/terraform.tfvars -out=tfplan
-        terraform apply -auto-approve tfplan
+stages:
+- stage: CD
+  displayName: Infra CD (apply)
+  # Optional: require manual approval in DevOps Environments
+  # environment: 'infra-dev'   # configure approvals in Project Settings → Environments
+  jobs:
+  - job: TerraformApply
+    steps:
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: $(terraformVersion)
+
+    # Option 1: Re-init and re-plan, then apply the saved plan file in workspace
+    - task: TerraformTaskV4@4
+      displayName: INIT
+      inputs:
+        provider: azurerm
+        backendServiceArm: $(azureServiceConnection)
+        backendAzureRmResourceGroupName: $(backendResourceGroup)
+        backendAzureRmStorageAccountName: $(backendStorageAccount)
+        backendAzureRmContainerName: $(backendContainer)
+        backendAzureRmKey: $(backendKey)
+        command: init
+        workingDirectory: $(workingdir)
+
+    - task: TerraformTaskV4@4
+      displayName: PLAN (CD)
+      inputs:
+        provider: azurerm
+        command: plan
+        environmentServiceNameAzureRM: $(azureServiceConnection)
+        commandOptions: -out=tfplan -var-file="environments/$(environment)/terraform.tfvars"
+        workingDirectory: $(workingdir)
+
+    - task: TerraformTaskV4@4
+      displayName: APPLY
+      inputs:
+        provider: azurerm
+        command: apply
+        environmentServiceNameAzureRM: $(azureServiceConnection)
+        commandOptions: tfplan -input=false -auto-approve
+        workingDirectory: $(workingdir)

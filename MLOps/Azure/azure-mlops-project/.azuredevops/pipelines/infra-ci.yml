@@ -1,22 +1,64 @@
 trigger:
-  branches: { include: [ main ] }
-  paths: { include: [ azure/terraform/** ] }
+  branches:
+    include: [ main ]
+  paths:
+    include: [ MLOps\Azure\azure-mlops-project\azure\terraform ]   # adjust to your folder
 
 pr:
-  branches: { include: [ main ] }
-  paths: { include: [ azure/terraform/** ] }
+  branches:
+    include: [ main ]
+  paths:
+    include: [ MLOps\Azure\azure-mlops-project\azure\terraform ]
 
-pool: { vmImage: ubuntu-latest }
+pool:
+  name: 'Default'
 
-steps:
-  - task: AzureCLI@2
-    displayName: "Terraform fmt & init & validate"
-    inputs:
-      azureSubscription: $(AZURE_SERVICE_CONNECTION)
-      scriptType: bash
-      scriptLocation: inlineScript
-      inlineScript: |
-        cd azure/terraform
-        terraform fmt -check -recursive
-        terraform init -backend=false
-        terraform validate
+variables:
+  - group: dev_vars
+
+stages:
+- stage: CI
+  displayName: Infra CI (validate & plan)
+  jobs:
+  - job: TerraformCI
+    steps:
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: $(terraformVersion)
+
+    - task: TerraformTaskV4@4
+      displayName: INIT
+      inputs:
+        provider: azurerm
+        backendServiceArm: $(azureServiceConnection)
+        backendAzureRmResourceGroupName: $(backendResourceGroup)
+        backendAzureRmStorageAccountName: $(backendStorageAccount)
+        backendAzureRmContainerName: $(backendContainer)
+        backendAzureRmKey: $(backendKey)
+        command: init
+        workingDirectory: $(workingdir)
+
+    - task: TerraformTaskV4@4
+      displayName: VALIDATE
+      inputs:
+        provider: azurerm
+        command: validate
+        workingDirectory: $(workingdir)
+
+    - task: TerraformTaskV4@4
+      displayName: PLAN
+      inputs:
+        provider: azurerm
+        command: plan
+        environmentServiceNameAzureRM: $(azureServiceConnection)
+        commandOptions: -out=tfplan -var-file="environments/$(environment)/terraform.tfvars"
+        workingDirectory: $(workingdir)
+
+    - script: |
+        mkdir -p $(Build.ArtifactStagingDirectory)
+        cp $(workingdir)/tfplan $(Build.ArtifactStagingDirectory)/
+      displayName: Collect plan artifact
+
+    - publish: $(Build.ArtifactStagingDirectory)
+      artifact: tfplan
+      displayName: Publish plan artifact
