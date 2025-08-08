@@ -1,90 +1,66 @@
-trigger:
-  branches:
-    include: 
-    - main
+trigger: none
 
-pr:
-  branches:
-    include: 
-    - main
+# Pull artifacts from your CI pipeline
+resources:
+  pipelines:
+    - pipeline: ci
+      source: <CI pipeline name here>   # e.g. Infra-CI
+      branch: main                      # you can pick a different branch at run time in the UI
 
 pool:
-  name: 'Default'
+  vmImage: ubuntu-latest
 
 variables:
-  - group: dev_vars
+  AML_WS: $(AML_WORKSPACE_NAME)
+  AML_RG: $(RESOURCE_GROUP)
 
-stages:
-- stage: CI
-  displayName: Infra CI (validate & plan)
-  jobs:
-  - job: TerraformCI
-    steps:
-    - task: TerraformInstaller@0
-      inputs:
-        terraformVersion: $(terraformVersion)
+steps:
+  # Get the exact repo commit used by the CI run
+  - checkout: self
+    persistCredentials: true
 
-    - task: TerraformTaskV4@4
-      displayName: INIT
-      inputs:
-        provider: azurerm
-        backendServiceArm: $(azureServiceConnection)
-        backendAzureRmResourceGroupName: $(backendResourceGroup)
-        backendAzureRmStorageAccountName: $(backendStorageAccount)
-        backendAzureRmContainerName: $(backendContainer)
-        backendAzureRmKey: $(backendKey)
-        command: init
-        workingDirectory: $(workingdir)
+  - script: |
+      set -e
+      git fetch --all --prune
+      echo "Checking out CI commit: $(resources.pipeline.ci.sourceCommit)"
+      git checkout $(resources.pipeline.ci.sourceCommit)
+      git rev-parse --short HEAD
+    displayName: Checkout CI commit
 
-#unlock state if needed
-    # - script: |
-    #     set -e
-    #     terraform init -input=false
-    #     terraform force-unlock -force "5db31b9e-e804-693a-31bf-0f42ea8e3723" || true
-    #   displayName: Terraform force-unlock (always)
-    #   workingDirectory: $(workingdir)
-          
-    - task: TerraformTaskV4@4
-      displayName: PLAN
-      inputs:
-        provider: azurerm
-        command: plan
-        environmentServiceNameAzureRM: $(azureServiceConnection)
-        commandOptions: -out=tfplan -var-file="envs/$(environment)/terraform.tfvars"
-        workingDirectory: $(workingdir)
+  # Download artifacts produced by CI
+  - download: ci
+    artifact: tfplan
+    displayName: Download tfplan artifact
 
-    # Export human-readable JSON (only if tfplan exists)
-    - task: PowerShell@2
-      displayName: Export plan as JSON (optional)
-      inputs:
-        targetType: inline
-        workingDirectory: $(workingdir)
-        script: |
-          if (Test-Path "tfplan") {
-            New-Item -ItemType Directory -Force -Path "$env:BUILD_ARTIFACTSTAGINGDIRECTORY" | Out-Null
-            terraform show -json tfplan > "$env:BUILD_ARTIFACTSTAGINGDIRECTORY\tfplan.json"
-            Write-Host "Wrote $env:BUILD_ARTIFACTSTAGINGDIRECTORY\tfplan.json"
-          } else {
-            Write-Host "No tfplan found; skipping JSON export."
-          }
+  # Install Terraform (or use your existing task)
+  - task: TerraformInstaller@0
+    inputs:
+      terraformVersion: $(terraformVersion)
+    displayName: Install Terraform
 
-    # Collect the binary tfplan (only if it exists)
-    - task: PowerShell@2
-      displayName: Collect plan artifact
-      inputs:
-        targetType: inline
-        script: |
-          New-Item -ItemType Directory -Force -Path "$(Build.ArtifactStagingDirectory)" | Out-Null
-          if (Test-Path "$(workingdir)\tfplan") {
-            Copy-Item -Path "$(workingdir)\tfplan" -Destination "$(Build.ArtifactStagingDirectory)\tfplan" -Force
-            Write-Host "Copied tfplan to artifact staging."
-          } else {
-            Write-Host "No tfplan found; skipping copy."
-          }
+  # Init with the SAME backend config used in CI
+  - task: TerraformTaskV4@4
+    displayName: INIT
+    inputs:
+      provider: azurerm
+      backendServiceArm: $(azureServiceConnection)
+      backendAzureRmResourceGroupName: $(backendResourceGroup)
+      backendAzureRmStorageAccountName: $(backendStorageAccount)
+      backendAzureRmContainerName: $(backendContainer)
+      backendAzureRmKey: $(backendKey)
+      command: init
+      workingDirectory: $(workingdir)
 
-    # Publish (it’s fine if the folder is empty)
-    - publish: $(Build.ArtifactStagingDirectory)
-      displayName: Publish plan artifact
-      artifact: tfplan
-      condition: succeeded()
-
+  # Apply the exact reviewed plan (no prompt when using a planfile)
+  # When you save a Terraform tfplan file in CI, it’s tied to:
+  # The exact Terraform code & variables from that commit
+  # The provider version used
+  # The state at that moment
+  # If your CD pipeline just grabs the plan file but runs against different code (e.g., main has since changed), Terraform will throw an error
+  - script: |
+      set -e
+      PLAN_PATH="$(Pipeline.Workspace)/ci/tfplan/tfplan"
+      echo "Applying saved plan: $PLAN_PATH"
+      terraform apply "$PLAN_PATH"
+    workingDirectory: $(workingdir)
+    displayName: Terraform APPLY (saved plan)
