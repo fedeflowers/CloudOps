@@ -1,7 +1,7 @@
-trigger:
-  branches:
-    include:
-      - main  # Trigger pipeline on commits to the main branch
+# trigger:
+#   branches:
+#     include:
+#       - main  # Trigger pipeline on commits to the main branch
 
 pool:
   name: 'Default'
