@@ -1,6 +1,12 @@
 trigger:
   branches:
-    include: main
+    include: 
+    - main
+
+pr:
+  branches:
+    include: 
+    - main
 
 pool:
   name: 'Default'
