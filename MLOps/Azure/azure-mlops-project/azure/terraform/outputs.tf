@@ -1,5 +1,11 @@
-output "workspace_name" { value = azurerm_machine_learning_workspace.aml.name }
-output "acr_name" { value = azurerm_container_registry.acr.name }
+output "workspace_name" {
+  value = module.ml_core.workspace_name
+}
+
+output "acr_name" {
+  value = module.ml_core.acr_name
+}
+
 output "kv_name" {
   value = module.ml_core.kv_name
 }
