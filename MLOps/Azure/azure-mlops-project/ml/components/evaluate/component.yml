@@ -1,0 +1,12 @@
+name: evaluate
+display_name: evaluate
+type: command
+inputs:
+  model_dir: { type: uri_folder }
+  min_acc: { type: number }
+outputs:
+  approved: { type: uri_folder }
+environment: ../environments/sklearn-env.yml
+code: .
+command: >-
+  python evaluate.py --model_dir ${{inputs.model_dir}} --min_acc ${{inputs.min_acc}} --approved ${{outputs.approved}}

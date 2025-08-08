@@ -1,0 +1,22 @@
+trigger:
+  branches: { include: [ main ] }
+  paths: { include: [ azure/terraform/** ] }
+
+pr:
+  branches: { include: [ main ] }
+  paths: { include: [ azure/terraform/** ] }
+
+pool: { vmImage: ubuntu-latest }
+
+steps:
+  - task: AzureCLI@2
+    displayName: "Terraform fmt & init & validate"
+    inputs:
+      azureSubscription: $(AZURE_SERVICE_CONNECTION)
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        cd azure/terraform
+        terraform fmt -check -recursive
+        terraform init -backend=false
+        terraform validate

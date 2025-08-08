@@ -1,0 +1,11 @@
+name: train
+display_name: train
+type: command
+inputs:
+  train_folder: { type: uri_folder }
+outputs:
+  model_dir: { type: uri_folder }
+environment: ../environments/sklearn-env.yml
+code: .
+command: >-
+  python train.py --train_csv ${{inputs.train_folder}}/train.csv --model_dir ${{outputs.model_dir}}

@@ -1,0 +1,24 @@
+trigger:
+  none
+
+parameters:
+  - name: environment
+    type: string
+    default: dev
+    values: [ dev, prod ]
+
+pool: { vmImage: ubuntu-latest }
+
+steps:
+  - task: AzureCLI@2
+    displayName: "Terraform apply"
+    inputs:
+      azureSubscription: $(AZURE_SERVICE_CONNECTION)
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -e
+        cd azure/terraform
+        terraform init
+        terraform plan -var-file=envs/${{ parameters.environment }}/terraform.tfvars -out=tfplan
+        terraform apply -auto-approve tfplan

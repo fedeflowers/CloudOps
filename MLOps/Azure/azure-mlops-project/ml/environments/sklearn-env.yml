@@ -1,0 +1,14 @@
+name: sklearn-env
+image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+conda_file:
+  name: sklearn-env
+  channels: [defaults, conda-forge]
+  dependencies:
+    - python=3.10
+    - pip
+    - pip:
+        - scikit-learn==1.4.2
+        - pandas
+        - numpy
+        - azureml-mlflow
+        - mlflow

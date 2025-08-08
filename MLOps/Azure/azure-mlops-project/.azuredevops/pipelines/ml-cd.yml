@@ -1,0 +1,23 @@
+trigger:
+  none
+
+variables:
+  AML_WS: $(AML_WORKSPACE_NAME)
+  AML_RG: $(RESOURCE_GROUP)
+
+pool: { vmImage: ubuntu-latest }
+
+steps:
+  - download: current
+    artifact: ml_code
+
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: $(AZURE_SERVICE_CONNECTION)
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -e
+        cd $(Pipeline.Workspace)/ml_code
+        pip install -r requirements.txt azure-ai-ml==1.*
+        python pipeline/submit.py --workspace $(AML_WS) --resource-group $(AML_RG)

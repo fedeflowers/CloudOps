@@ -1,0 +1,10 @@
+name: prep
+display_name: prep
+type: command
+inputs:
+  raw_path: { type: uri_file }
+  output_path: { type: uri_folder }
+environment: ../environments/sklearn-env.yml
+code: .
+command: >-
+  python prep.py --raw_path ${{inputs.raw_path}} --output_path ${{inputs.output_path}}

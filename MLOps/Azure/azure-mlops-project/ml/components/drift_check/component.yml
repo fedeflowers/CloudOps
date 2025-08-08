@@ -1,0 +1,13 @@
+name: drift_check
+display_name: drift_check
+type: command
+inputs:
+  baseline: { type: uri_file }
+  latest_data: { type: uri_file }
+  threshold: { type: number }
+outputs:
+  drift_signal: { type: uri_folder }
+code: .
+environment: ../environments/sklearn-env.yml
+command: >-
+  python drift_check.py --baseline ${{inputs.baseline}} --latest ${{inputs.latest_data}} --threshold ${{inputs.threshold}} --out ${{outputs.drift_signal}}

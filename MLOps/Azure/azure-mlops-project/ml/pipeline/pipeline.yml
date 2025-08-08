@@ -1,0 +1,77 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+settings:
+  default_compute: azureml:cpu-cluster
+  continue_on_step_failure: false
+
+inputs:
+  raw_latest:
+    type: uri_file
+    path: azureml://datastores/workspaceblobstore/paths/incoming/latest.csv
+  baseline:
+    type: uri_file
+    path: ./ml/data/baseline.csv
+  min_acc:
+    type: number
+    default: 0.90
+  drift_threshold:
+    type: number
+    default: 0.15
+
+outputs:
+  model_out: { type: uri_folder }
+
+jobs:
+  drift:
+    type: command
+    component: ../components/drift_check/component.yml
+    inputs:
+      baseline: ${{parent.inputs.baseline}}
+      latest_data: ${{parent.inputs.raw_latest}}
+      threshold: ${{parent.inputs.drift_threshold}}
+
+  prep:
+    type: command
+    component: ../components/prep/component.yml
+    inputs:
+      raw_path: ${{parent.inputs.raw_latest}}
+    condition: greaterOrEqual(outputs('drift').output.drift_signal, 'DRIFT') == true
+
+  train:
+    type: command
+    component: ../components/train/component.yml
+    inputs:
+      train_folder: ${{parent.jobs.prep.outputs.output_path}}
+    outputs:
+      model_dir: ${{parent.outputs.model_out}}
+    condition: succeeded('prep')
+
+  evaluate:
+    type: command
+    component: ../components/evaluate/component.yml
+    inputs:
+      model_dir: ${{parent.jobs.train.outputs.model_dir}}
+      min_acc: ${{parent.inputs.min_acc}}
+    condition: succeeded('train')
+
+  register_deploy:
+    type: command
+    code: ..
+    environment: ../environments/sklearn-env.yml
+    command: >-
+      python - <<'PY'
+      import os, mlflow
+      from azure.ai.ml import MLClient
+      from azure.identity import DefaultAzureCredential
+      from azure.ai.ml.entities import Model
+      ws = os.environ.get('AZUREML_WORKSPACE_NAME')
+      rg = os.environ.get('AZUREML_RESOURCE_GROUP')
+      sub = os.environ.get('AZUREML_SUBSCRIPTION_ID')
+      mlc = MLClient(DefaultAzureCredential(), sub, rg, ws)
+      # Register model
+      mpath = "${{parent.jobs.train.outputs.model_dir}}"
+      model = Model(path=mpath, name="sklearn-iris", type="mlflow_model")
+      mlc.models.create_or_update(model)
+      print("Model registered")
+      PY
+    condition: succeeded('evaluate')
