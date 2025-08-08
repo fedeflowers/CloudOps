@@ -1,23 +1,88 @@
-trigger:
-  none
+trigger: none
+
+# Pull artifacts from your CI pipeline
+resources:
+  pipelines:
+    - pipeline: ci
+      source: <CI pipeline name here>   # e.g. Infra-CI
+      branch: main                      # you can pick a different branch at run time in the UI
+
+pool:
+  vmImage: ubuntu-latest
 
 variables:
   AML_WS: $(AML_WORKSPACE_NAME)
   AML_RG: $(RESOURCE_GROUP)
 
-pool: { vmImage: ubuntu-latest }
-
 steps:
-  - download: current
-    artifact: ml_code
+  # Get the exact repo commit used by the CI run
+  - checkout: self
+    persistCredentials: true
 
+  - script: |
+      set -e
+      git fetch --all --prune
+      echo "Checking out CI commit: $(resources.pipeline.ci.sourceCommit)"
+      git checkout $(resources.pipeline.ci.sourceCommit)
+      git rev-parse --short HEAD
+    displayName: Checkout CI commit
+
+  # Download artifacts produced by CI
+  - download: ci
+    artifact: tfplan
+    displayName: Download tfplan artifact
+
+  - download: ci
+    artifact: ml_code
+    displayName: Download ml_code artifact (optional)
+
+  # (Optional) if your Terraform lives under a subfolder
+  # - script: echo "Repo files:" && ls -la
+  #   workingDirectory: <your terraform root>
+  #   displayName: Inspect files
+
+  # Install Terraform (or use your existing task)
+  - task: TerraformInstaller@0
+    inputs:
+      terraformVersion: $(terraformVersion)
+    displayName: Install Terraform
+
+  # Init with the SAME backend config used in CI
+  - task: TerraformTaskV4@4
+    displayName: INIT
+    inputs:
+      provider: azurerm
+      backendServiceArm: $(azureServiceConnection)
+      backendAzureRmResourceGroupName: $(backendResourceGroup)
+      backendAzureRmStorageAccountName: $(backendStorageAccount)
+      backendAzureRmContainerName: $(backendContainer)
+      backendAzureRmKey: $(backendKey)
+      command: init
+      workingDirectory: $(workingdir)
+
+  # Apply the exact reviewed plan (no prompt when using a planfile)
+  # When you save a Terraform tfplan file in CI, it’s tied to:
+  # The exact Terraform code & variables from that commit
+  # The provider version used
+  # The state at that moment
+  # If your CD pipeline just grabs the plan file but runs against different code (e.g., main has since changed), Terraform will throw an error
+  - script: |
+      set -e
+      PLAN_PATH="$(Pipeline.Workspace)/ci/tfplan/tfplan"
+      echo "Applying saved plan: $PLAN_PATH"
+      terraform apply "$PLAN_PATH"
+    workingDirectory: $(workingdir)
+    displayName: Terraform APPLY (saved plan)
+
+  # --- Your AML step (optional) ---
   - task: AzureCLI@2
+    displayName: Submit AML pipeline
     inputs:
       azureSubscription: $(AZURE_SERVICE_CONNECTION)
       scriptType: bash
       scriptLocation: inlineScript
       inlineScript: |
         set -e
-        cd $(Pipeline.Workspace)/ml_code
+        cd "$(Pipeline.Workspace)/ci/ml_code"
         pip install -r requirements.txt azure-ai-ml==1.*
-        python pipeline/submit.py --workspace $(AML_WS) --resource-group $(AML_RG)
+        python pipeline/submit.py --workspace "$(AML_WS)" --resource-group "$(AML_RG)"
