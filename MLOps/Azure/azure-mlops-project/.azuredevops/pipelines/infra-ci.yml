@@ -13,6 +13,7 @@ pool:
 
 variables:
   - group: dev_vars
+    TF_FORCE_UNLOCK_ID: ""
 
 stages:
 - stage: CI
@@ -36,6 +37,13 @@ stages:
         command: init
         workingDirectory: $(workingdir)
 
+    - script: |
+            terraform init -input=false
+            terraform force-unlock -force $(TF_FORCE_UNLOCK_ID)
+      displayName: Terraform force-unlock (manual, if TF_FORCE_UNLOCK_ID set)
+      workingDirectory: $(workingdir)
+      condition: and(succeeded(), ne(variables['TF_FORCE_UNLOCK_ID'], ''))
+          
     - task: TerraformTaskV4@4
       displayName: PLAN
       inputs:
@@ -53,4 +61,4 @@ stages:
     - publish: $(Build.ArtifactStagingDirectory)
       artifact: tfplan
       displayName: Publish plan artifact
-      
+
