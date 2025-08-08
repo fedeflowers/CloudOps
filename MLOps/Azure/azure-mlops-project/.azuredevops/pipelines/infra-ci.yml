@@ -35,19 +35,6 @@ stages:
         backendAzureRmKey: $(backendKey)
         command: init
         workingDirectory: $(workingdir)
-        
-    - task: TerraformTaskV4@4
-      displayName: Force Unlock
-      inputs:
-        provider: azurerm
-        backendServiceArm: $(azureServiceConnection)
-        backendAzureRmResourceGroupName: $(backendResourceGroup)
-        backendAzureRmStorageAccountName: $(backendStorageAccount)
-        backendAzureRmContainerName: $(backendContainer)
-        backendAzureRmKey: $(backendKey)
-        command: custom
-        customCommand: force-unlock 5db31b9e-e804-693a-31bf-0f42ea8e3723
-        workingDirectory: $(workingdir)
 
     - task: TerraformTaskV4@4
       displayName: PLAN
