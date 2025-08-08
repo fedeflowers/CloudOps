@@ -1,50 +1,66 @@
 trigger: none
 
+# Pull artifacts from your CI pipeline
+resources:
+  pipelines:
+    - pipeline: ci
+      source: <CI pipeline name here>   # e.g. Infra-CI
+      branch: main                      # you can pick a different branch at run time in the UI
+
 pool:
-  name: 'Default'
+  vmImage: ubuntu-latest
 
 variables:
-  - group: dev_vars
+  AML_WS: $(AML_WORKSPACE_NAME)
+  AML_RG: $(RESOURCE_GROUP)
 
-stages:
-- stage: CD
-  displayName: Infra CD (apply)
-  # Optional: require manual approval in DevOps Environments
-  # environment: 'infra-dev'   # configure approvals in Project Settings → Environments
-  jobs:
-  - job: TerraformApply
-    steps:
-    - task: TerraformInstaller@0
-      inputs:
-        terraformVersion: $(terraformVersion)
+steps:
+  # Get the exact repo commit used by the CI run
+  - checkout: self
+    persistCredentials: true
 
-    # Option 1: Re-init and re-plan, then apply the saved plan file in workspace
-    - task: TerraformTaskV4@4
-      displayName: INIT
-      inputs:
-        provider: azurerm
-        backendServiceArm: $(azureServiceConnection)
-        backendAzureRmResourceGroupName: $(backendResourceGroup)
-        backendAzureRmStorageAccountName: $(backendStorageAccount)
-        backendAzureRmContainerName: $(backendContainer)
-        backendAzureRmKey: $(backendKey)
-        command: init
-        workingDirectory: $(workingdir)
+  - script: |
+      set -e
+      git fetch --all --prune
+      echo "Checking out CI commit: $(resources.pipeline.ci.sourceCommit)"
+      git checkout $(resources.pipeline.ci.sourceCommit)
+      git rev-parse --short HEAD
+    displayName: Checkout CI commit
 
-    - task: TerraformTaskV4@4
-      displayName: PLAN (CD)
-      inputs:
-        provider: azurerm
-        command: plan
-        environmentServiceNameAzureRM: $(azureServiceConnection)
-        commandOptions: -out=tfplan -var-file="envs/$(environment)/terraform.tfvars"
-        workingDirectory: $(workingdir)
+  # Download artifacts produced by CI
+  - download: ci
+    artifact: tfplan
+    displayName: Download tfplan artifact
 
-    - task: TerraformTaskV4@4
-      displayName: APPLY
-      inputs:
-        provider: azurerm
-        command: apply
-        environmentServiceNameAzureRM: $(azureServiceConnection)
-        commandOptions: tfplan -input=false -auto-approve
-        workingDirectory: $(workingdir)
+  # Install Terraform (or use your existing task)
+  - task: TerraformInstaller@0
+    inputs:
+      terraformVersion: $(terraformVersion)
+    displayName: Install Terraform
+
+  # Init with the SAME backend config used in CI
+  - task: TerraformTaskV4@4
+    displayName: INIT
+    inputs:
+      provider: azurerm
+      backendServiceArm: $(azureServiceConnection)
+      backendAzureRmResourceGroupName: $(backendResourceGroup)
+      backendAzureRmStorageAccountName: $(backendStorageAccount)
+      backendAzureRmContainerName: $(backendContainer)
+      backendAzureRmKey: $(backendKey)
+      command: init
+      workingDirectory: $(workingdir)
+
+  # Apply the exact reviewed plan (no prompt when using a planfile)
+  # When you save a Terraform tfplan file in CI, it’s tied to:
+  # The exact Terraform code & variables from that commit
+  # The provider version used
+  # The state at that moment
+  # If your CD pipeline just grabs the plan file but runs against different code (e.g., main has since changed), Terraform will throw an error
+  - script: |
+      set -e
+      PLAN_PATH="$(Pipeline.Workspace)/ci/tfplan/tfplan"
+      echo "Applying saved plan: $PLAN_PATH"
+      terraform apply "$PLAN_PATH"
+    workingDirectory: $(workingdir)
+    displayName: Terraform APPLY (saved plan)
