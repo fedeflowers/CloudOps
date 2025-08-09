@@ -4,7 +4,7 @@ trigger:
       - main
   paths:
     include:
-      - ml/*
+      - ml/**
 
 stages:
   - stage: ML_CI
@@ -13,7 +13,7 @@ stages:
       - job: Build
         displayName: "Lint, test, and package ML code"
         pool:
-          vmImage: ubuntu-latest
+          name: 'Default'
         steps:
           - task: UsePythonVersion@0
             inputs:
@@ -38,7 +38,7 @@ stages:
         displayName: "Submit AML pipeline"
         environment: aml-prod
         pool:
-          vmImage: ubuntu-latest
+          name: 'Default'
         strategy:
           runOnce:
             deploy:
