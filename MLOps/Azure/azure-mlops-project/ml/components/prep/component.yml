@@ -1,10 +1,21 @@
-name: prep
-display_name: prep
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: prep_data
+version: 1
 type: command
+display_name: prep_data
+description: Prepare training data only if drift detected.
+
 inputs:
-  raw_path: { type: uri_file }
+  latest_folder: { type: uri_folder }
+  drift_signal: { type: uri_file }
+
+outputs:
   output_path: { type: uri_folder }
-environment: ../environments/sklearn-env.yml
-code: .
+
+code: ./src
+environment: ../../environments/sklearn-env.yml
 command: >-
-  python prep.py --raw_path ${{inputs.raw_path}} --output_path ${{inputs.output_path}}
+  python prep.py
+  --latest-folder ${{inputs.latest_folder}}
+  --signal ${{inputs.drift_signal}}
+  --out ${{outputs.output_path}}

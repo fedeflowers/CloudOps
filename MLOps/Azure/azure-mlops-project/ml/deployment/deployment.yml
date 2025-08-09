@@ -1,10 +1,10 @@
 $schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
-name: blue
-endpoint_name: sklearn-iris-endpoint
-environment: ../environments/sklearn-env.yml
-model: azureml:sklearn-iris@latest
+name: iris-blue
+endpoint_name: iris-endpoint
+model: azureml:sklearn-iris:latest
 code_configuration:
-  code: .
+  code: ./src
   scoring_script: score.py
-instance_type: Standard_DS2_v2
+environment: ../environments/sklearn-env.yml
+instance_type: Standard_DS3_v2
 instance_count: 1

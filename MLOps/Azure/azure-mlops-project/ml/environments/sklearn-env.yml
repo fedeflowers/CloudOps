@@ -1,14 +1,16 @@
+$schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
 name: sklearn-env
-image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
+version: 1
+image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:202406
 conda_file:
-  name: sklearn-env
-  channels: [defaults, conda-forge]
+  channels: [conda-forge, defaults]
   dependencies:
     - python=3.10
     - pip
     - pip:
-        - scikit-learn==1.4.2
-        - pandas
-        - numpy
-        - azureml-mlflow
-        - mlflow
+        - azure-ai-ml>=1.18.0
+        - azure-identity>=1.17.0
+        - mlflow>=2.12.0
+        - scikit-learn>=1.4.0
+        - pandas>=2.2.0
+        - numpy>=1.26.0

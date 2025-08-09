@@ -1,12 +1,17 @@
-name: evaluate
-display_name: evaluate
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: evaluate_model
+version: 1
 type: command
+display_name: evaluate_model
+description: Evaluate and fail if below threshold.
+
 inputs:
   model_dir: { type: uri_folder }
   min_acc: { type: number }
-outputs:
-  approved: { type: uri_folder }
-environment: ../environments/sklearn-env.yml
-code: .
+
+code: ./src
+environment: ../../environments/sklearn-env.yml
 command: >-
-  python evaluate.py --model_dir ${{inputs.model_dir}} --min_acc ${{inputs.min_acc}} --approved ${{outputs.approved}}
+  python evaluate.py
+  --model ${{inputs.model_dir}}
+  --min-acc ${{inputs.min_acc}}

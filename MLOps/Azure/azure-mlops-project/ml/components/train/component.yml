@@ -1,11 +1,19 @@
-name: train
-display_name: train
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: train_model
+version: 1
 type: command
+display_name: train_model
+description: Train and save MLflow model.
+
 inputs:
   train_folder: { type: uri_folder }
+
 outputs:
   model_dir: { type: uri_folder }
-environment: ../environments/sklearn-env.yml
-code: .
+
+code: ./src
+environment: ../../environments/sklearn-env.yml
 command: >-
-  python train.py --train_csv ${{inputs.train_folder}}/train.csv --model_dir ${{outputs.model_dir}}
+  python train.py
+  --data ${{inputs.train_folder}}
+  --out ${{outputs.model_dir}}

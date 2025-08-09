@@ -1,0 +1,31 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+
+settings:
+  default_compute: azureml:cpu-cluster
+  continue_on_step_failure: false
+
+inputs:
+  baseline:
+    type: uri_file
+    path: azureml:iris-baseline:1
+  latest_data:
+    type: uri_folder
+    path: azureml://datastores/raw/paths/production/latest   # e.g., prod feed/MLTable root
+  drift_threshold:
+    type: number
+    default: 0.15
+
+outputs:
+  drift_signal_out: { type: uri_file }
+
+jobs:
+  drift:
+    type: command
+    component: ../components/drift_check/component.yml
+    inputs:
+      baseline: ${{parent.inputs.baseline}}
+      latest_data: ${{parent.inputs.latest_data}}
+      threshold: ${{parent.inputs.drift_threshold}}
+    outputs:
+      drift_signal: ${{parent.outputs.drift_signal_out}}
