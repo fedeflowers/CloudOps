@@ -17,12 +17,21 @@ stages:
           name: 'Default'
         steps:
           - powershell: |
-              Set-ExecutionPolicy RemoteSigned -Scope Process
-            displayName: "Allow PowerShell scripts"
-
-          - task: UsePythonVersion@0
-            inputs:
-              versionSpec: "3.11"
+              $ver = "3.11.9"
+              $url = "https://www.python.org/ftp/python/$ver/python-$ver-embed-amd64.zip"
+              $dest = "$(Build.SourcesDirectory)\.python"
+              New-Item -ItemType Directory -Force -Path $dest | Out-Null
+              $zip = "$(Build.SourcesDirectory)\python-$ver.zip"
+              Invoke-WebRequest -Uri $url -OutFile $zip
+              Add-Type -AssemblyName System.IO.Compression.FileSystem
+              [IO.Compression.ZipFile]::ExtractToDirectory($zip, $dest)
+              # Enable pip in the embeddable by creating/patching pythonXX._pth
+              $pth = Get-ChildItem "$dest\python*.pth" | Select-Object -First 1
+              (Get-Content $pth) -replace '^\s*#?import site\s*$', 'import site' | Set-Content $pth
+              # Put embeddable Python on PATH for subsequent steps
+              echo "##vso[task.setvariable variable=PYTHON_HOME]$dest"
+              echo "##vso[task.prependpath]$dest"
+            displayName: "Install portable Python 3.11 (embeddable)"
           - script: pip install -r ml/requirements.txt
             displayName: "Install dependencies"
           - script: pip install flake8 pytest
