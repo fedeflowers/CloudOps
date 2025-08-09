@@ -73,7 +73,7 @@ stages:
               # Sanity check
               & $py -m pip --version
             displayName: "Install portable Python 3.11 (embeddable)"
-          - script: pip install -r ml/requirements.txt
+          - script: pip install -r MLOps/Azure/azure-mlops-project/ml/requirements.txt
             displayName: "Install dependencies"
           - script: pip install flake8 pytest
             displayName: "Install dev tools"
