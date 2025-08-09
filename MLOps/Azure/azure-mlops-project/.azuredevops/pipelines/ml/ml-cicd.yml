@@ -17,20 +17,37 @@ stages:
           name: 'Default'
         steps:
           - powershell: |
-              $ver = "3.11.9"
-              $url = "https://www.python.org/ftp/python/$ver/python-$ver-embed-amd64.zip"
-              $dest = "$(Build.SourcesDirectory)\.python"
+              $ver  = "3.11.9"
+              $url  = "https://www.python.org/ftp/python/$ver/python-$ver-embed-amd64.zip"
+              $root = "$(Build.SourcesDirectory)"
+              $dest = Join-Path $root ".python"
+              $zip  = Join-Path $root "python-$ver.zip"
+
               New-Item -ItemType Directory -Force -Path $dest | Out-Null
-              $zip = "$(Build.SourcesDirectory)\python-$ver.zip"
               Invoke-WebRequest -Uri $url -OutFile $zip
+
               Add-Type -AssemblyName System.IO.Compression.FileSystem
-              [IO.Compression.ZipFile]::ExtractToDirectory($zip, $dest)
-              # Enable pip in the embeddable by creating/patching pythonXX._pth
-              $pth = Get-ChildItem "$dest\python*.pth" | Select-Object -First 1
-              (Get-Content $pth) -replace '^\s*#?import site\s*$', 'import site' | Set-Content $pth
-              # Put embeddable Python on PATH for subsequent steps
-              echo "##vso[task.setvariable variable=PYTHON_HOME]$dest"
-              echo "##vso[task.prependpath]$dest"
+              [IO.Compression.ZipFile]::ExtractToDirectory($zip, $dest, $true)
+
+              # Enable site-packages by ensuring 'import site' is active
+              $pth = Get-ChildItem (Join-Path $dest "python*._pth") | Select-Object -First 1
+              if ($null -eq $pth) {
+                # Fallback: create a minimal _pth file if it wasn't present for any reason
+                $pth = Join-Path $dest "python311._pth"
+                Set-Content -Path $pth -Value "import site"
+              } else {
+                (Get-Content $pth.FullName) -replace '^\s*#\s*import site\s*$', 'import site' | Set-Content $pth.FullName
+              }
+
+              # Put embeddable Python on PATH for later steps
+              Write-Host "##vso[task.setvariable variable=PYTHON_HOME]$dest"
+              Write-Host "##vso[task.prependpath]$dest"
+
+              # Bootstrap pip (embeddable doesn't include pip)
+              $gp = Join-Path $root "get-pip.py"
+              Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $gp
+              & "$dest\python.exe" $gp
+              & "$dest\python.exe" -m pip --version
             displayName: "Install portable Python 3.11 (embeddable)"
           - script: pip install -r ml/requirements.txt
             displayName: "Install dependencies"
