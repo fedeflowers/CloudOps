@@ -2,9 +2,11 @@ trigger:
   branches:
     include:
       - main
+  paths:
     include:
       - MLOps/Azure/azure-mlops-project/ml/**
       - MLOps/Azure/azure-mlops-project/.azuredevops/pipelines/ml/**
+
 stages:
   - stage: ML_CI
     displayName: "Machine Learning CI"
@@ -14,30 +16,83 @@ stages:
         pool:
           name: 'Default'
         steps:
-          # 1) Install a portable Python 3.11 into .python and add it to PATH
           - powershell: |
-              $ver  = "3.11.9"
+              # Fail fast and show errors
+              $ErrorActionPreference = 'Stop'
+
+              # ---- Settings ----
+              $ver  = '3.11.9'
+              $url  = "https://www.python.org/ftp/python/$ver/python-$ver-embed-amd64.zip"
               $root = "$(Build.SourcesDirectory)"
               $dest = Join-Path $root ".python"
               $zip  = Join-Path $root "python-$ver.zip"
 
+              Write-Host "Installing portable Python $ver into $dest"
+
+              # Ensure TLS 1.2 for Invoke-WebRequest on older hosts
+              [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+              # Fresh dir
+              if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
               New-Item -ItemType Directory -Force -Path $dest | Out-Null
-              Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$ver/python-$ver-embed-amd64.zip" -OutFile $zip
-              Add-Type -AssemblyName System.IO.Compression.FileSystem
-              [IO.Compression.ZipFile]::ExtractToDirectory($zip, $dest, $true)
 
-              # Enable site-packages (embeddable needs this)
-              Set-Content -Path (Join-Path $dest "python311._pth") -Value "import site"
+              # Download the embeddable zip
+              Write-Host "Downloading $url ..."
+              Invoke-WebRequest -Uri $url -OutFile $zip
 
-              # Put Python on PATH for next steps
+              # Unzip (prefer Expand-Archive; fallback to .NET if needed)
+              try {
+                Expand-Archive -Path $zip -DestinationPath $dest -Force
+              } catch {
+                Add-Type -AssemblyName System.IO.Compression.FileSystem
+                # Some agents lack the 3-arg overload; do a replace if it exists, otherwise remove+extract.
+                if ([System.IO.Compression.ZipFile].GetMethods().Name -contains 'ExtractToDirectory' -and
+                    ([System.IO.Compression.ZipFile].GetMethods() | Where-Object { $_.Name -eq 'ExtractToDirectory' -and $_.GetParameters().Count -eq 3 })) {
+                  [IO.Compression.ZipFile]::ExtractToDirectory($zip, $dest, $true)
+                } else {
+                  if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+                  New-Item -ItemType Directory -Force -Path $dest | Out-Null
+                  [IO.Compression.ZipFile]::ExtractToDirectory($zip, $dest)
+                }
+              }
+
+              # Enable site-packages by ensuring 'import site' is active in the *_pth file
+              $pth = Get-ChildItem -Path $dest -Filter "python*._pth" | Select-Object -First 1
+              if (-not $pth) {
+                $pth = Join-Path $dest "python311._pth"
+                # Minimal file enabling site
+                Set-Content -Path $pth -Value "import site"
+              } else {
+                (Get-Content $pth.FullName) `
+                  -replace '^\s*#\s*import site\s*$', 'import site' `
+                  | Set-Content $pth.FullName
+              }
+
+              # Put Python and (later) Scripts on PATH for subsequent steps
+              Write-Host "##vso[task.setvariable variable=PYTHON_HOME]$dest"
               Write-Host "##vso[task.prependpath]$dest"
+              Write-Host "##vso[task.prependpath]$dest\Scripts"
 
-              # Bootstrap pip
-              Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile (Join-Path $root "get-pip.py")
-              & "$dest\python.exe" "$(Build.SourcesDirectory)\get-pip.py"
-              & "$dest\python.exe" -m pip --version
-            displayName: "Install portable Python 3.11"
+              # Verify python.exe exists
+              $py = Join-Path $dest "python.exe"
+              if (-not (Test-Path $py)) {
+                throw "python.exe not found in $dest after extraction."
+              }
 
+              # Bootstrap pip (embeddable doesn't include pip)
+              $gp = Join-Path $root "get-pip.py"
+              Write-Host "Downloading get-pip.py ..."
+              Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $gp
+
+              # Some agents need -X utf8 to avoid path/encoding issues
+              & $py $gp
+
+              # Confirm pip works and shows location inside .python
+              & $py -m pip --version
+              & $py -m pip config list || Write-Host "pip config not set (that's OK)."
+
+              Write-Host "Portable Python $ver installed successfully."
+            displayName: "Install portable Python 3.11 (embeddable, robust)"
           - script: pip install -r ml/requirements.txt
             displayName: "Install dependencies"
           - script: pip install flake8 pytest
