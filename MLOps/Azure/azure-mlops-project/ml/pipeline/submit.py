@@ -19,6 +19,6 @@ ml_client = MLClient(
 here = os.path.dirname(os.path.abspath(__file__))
 yaml_path = os.path.join(here, "MLOps", "Azure", "azure-mlops-project", "ml", "pipeline", "pipeline.yml")
 
-job = load_job(path=yaml_path)
+job = load_job(yaml_path)
 submitted = ml_client.jobs.create_or_update(job)
 print(f"Submitted: {submitted.name}")
