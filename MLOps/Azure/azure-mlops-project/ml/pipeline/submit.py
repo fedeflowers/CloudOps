@@ -10,7 +10,8 @@ p.add_argument('--subscription', default=os.environ.get('AZURE_SUBSCRIPTION_ID')
 args = p.parse_args()
 
 if not args.subscription:
-    print("ERROR: --subscription not provided and AZURE_SUBSCRIPTION_ID not set.", file=sys.stderr)
+    print("ERROR: --subscription not provided and AZURE_SUBSCRIPTION_ID not set.",
+          file=sys.stderr)
     sys.exit(2)
 
 ml_client = MLClient(
