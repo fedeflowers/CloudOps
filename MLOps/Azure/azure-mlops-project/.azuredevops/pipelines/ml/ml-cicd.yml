@@ -170,8 +170,9 @@ stages:
                   displayName: "Install ML dependencies"
                 - script: pip install azure-ai-ml
                   displayName: "Install Azure ML SDK"
-                - script: |
-                    python ml/pipeline/submit.py \
-                      --workspace $(AML_WS) \
-                      --resource-group $(AML_RG)
+                - task: PythonScript@0
                   displayName: "Submit AML pipeline job"
+                  inputs:
+                    scriptSource: filePath
+                    scriptPath: $(Build.SourcesDirectory)/MLOps/Azure/azure-mlops-project/ml/pipeline/submit.py
+                    arguments: --workspace "$(AML_WS)" --resource-group "$(AML_RG)"
