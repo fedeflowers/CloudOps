@@ -6,8 +6,6 @@ trigger:
     include:
       - MLOps/Azure/azure-mlops-project/azure/terraform/**
       - MLOps/Azure/azure-mlops-project/.azuredevops/pipelines/infra/**
-  paths:
-
 pr:
   branches:
     include: 

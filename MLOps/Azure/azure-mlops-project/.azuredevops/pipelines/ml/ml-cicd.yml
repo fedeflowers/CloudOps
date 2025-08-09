@@ -5,7 +5,6 @@ trigger:
     include:
       - MLOps/Azure/azure-mlops-project/ml/**
       - MLOps/Azure/azure-mlops-project/.azuredevops/pipelines/ml/**
-
 stages:
   - stage: ML_CI
     displayName: "Machine Learning CI"
