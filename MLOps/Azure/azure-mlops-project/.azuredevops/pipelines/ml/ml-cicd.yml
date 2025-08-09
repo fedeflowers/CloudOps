@@ -17,50 +17,31 @@ stages:
           name: 'Default'
         steps:
           - powershell: |
-              # Fail fast and show errors
               $ErrorActionPreference = 'Stop'
 
-              # ---- Settings ----
+              # --- Settings ---
               $ver  = '3.11.9'
               $url  = "https://www.python.org/ftp/python/$ver/python-$ver-embed-amd64.zip"
               $root = "$(Build.SourcesDirectory)"
               $dest = Join-Path $root ".python"
               $zip  = Join-Path $root "python-$ver.zip"
-
-              Write-Host "Installing portable Python $ver into $dest"
-
-              # Ensure TLS 1.2 for Invoke-WebRequest on older hosts
               [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-              # Fresh dir
+              # Fresh install dir
               if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
               New-Item -ItemType Directory -Force -Path $dest | Out-Null
 
-              # Download the embeddable zip
+              # Download Python embeddable
               Write-Host "Downloading $url ..."
               Invoke-WebRequest -Uri $url -OutFile $zip
 
-              # Unzip (prefer Expand-Archive; fallback to .NET if needed)
-              try {
-                Expand-Archive -Path $zip -DestinationPath $dest -Force
-              } catch {
-                Add-Type -AssemblyName System.IO.Compression.FileSystem
-                # Some agents lack the 3-arg overload; do a replace if it exists, otherwise remove+extract.
-                if ([System.IO.Compression.ZipFile].GetMethods().Name -contains 'ExtractToDirectory' -and
-                    ([System.IO.Compression.ZipFile].GetMethods() | Where-Object { $_.Name -eq 'ExtractToDirectory' -and $_.GetParameters().Count -eq 3 })) {
-                  [IO.Compression.ZipFile]::ExtractToDirectory($zip, $dest, $true)
-                } else {
-                  if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
-                  New-Item -ItemType Directory -Force -Path $dest | Out-Null
-                  [IO.Compression.ZipFile]::ExtractToDirectory($zip, $dest)
-                }
-              }
+              # Unzip
+              Expand-Archive -Path $zip -DestinationPath $dest -Force
 
-              # Enable site-packages by ensuring 'import site' is active in the *_pth file
+              # Ensure 'import site' is enabled in the embeddable *_pth file
               $pth = Get-ChildItem -Path $dest -Filter "python*._pth" | Select-Object -First 1
               if (-not $pth) {
                 $pth = Join-Path $dest "python311._pth"
-                # Minimal file enabling site
                 Set-Content -Path $pth -Value "import site"
               } else {
                 (Get-Content $pth.FullName) `
@@ -68,31 +49,29 @@ stages:
                   | Set-Content $pth.FullName
               }
 
-              # Put Python and (later) Scripts on PATH for subsequent steps
+              # Put Python on PATH for later steps
               Write-Host "##vso[task.setvariable variable=PYTHON_HOME]$dest"
               Write-Host "##vso[task.prependpath]$dest"
-              Write-Host "##vso[task.prependpath]$dest\Scripts"
 
               # Verify python.exe exists
               $py = Join-Path $dest "python.exe"
-              if (-not (Test-Path $py)) {
-                throw "python.exe not found in $dest after extraction."
-              }
+              if (-not (Test-Path $py)) { throw "python.exe not found in $dest" }
 
-              # Bootstrap pip (embeddable doesn't include pip)
+              # Bootstrap pip
               $gp = Join-Path $root "get-pip.py"
               Write-Host "Downloading get-pip.py ..."
               Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $gp
-
-              # Some agents need -X utf8 to avoid path/encoding issues
               & $py $gp
 
-              # Confirm pip works and shows location inside .python
-              & $py -m pip --version
-              & $py -m pip config list || Write-Host "pip config not set (that's OK)."
+              # Add Scripts to PATH (created by pip)
+              $scripts = Join-Path $dest "Scripts"
+              if (Test-Path $scripts) {
+                Write-Host "##vso[task.prependpath]$scripts"
+              }
 
-              Write-Host "Portable Python $ver installed successfully."
-            displayName: "Install portable Python 3.11 (embeddable, robust)"
+              # Sanity check
+              & $py -m pip --version
+            displayName: "Install portable Python 3.11 (embeddable)"
           - script: pip install -r ml/requirements.txt
             displayName: "Install dependencies"
           - script: pip install flake8 pytest
