@@ -2,7 +2,6 @@ trigger:
   branches:
     include:
       - main
-  paths:
     include:
       - MLOps/Azure/azure-mlops-project/ml/**
       - MLOps/Azure/azure-mlops-project/.azuredevops/pipelines/ml/**
