@@ -1,0 +1,59 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - ml/*
+
+stages:
+  - stage: ML_CI
+    displayName: "Machine Learning CI"
+    jobs:
+      - job: Build
+        displayName: "Lint, test, and package ML code"
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: "3.11"
+          - script: pip install -r ml/requirements.txt
+            displayName: "Install dependencies"
+          - script: pip install flake8 pytest
+            displayName: "Install dev tools"
+          - script: flake8 ml
+            displayName: "Lint code"
+          - script: pytest ml/tests
+            displayName: "Run tests"
+          - publish: ml
+            artifact: ml_code
+
+  - stage: ML_CD
+    displayName: "Machine Learning CD"
+    dependsOn: ML_CI
+    condition: succeeded()
+    jobs:
+      - deployment: DeployToAML
+        displayName: "Submit AML pipeline"
+        environment: aml-prod
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: ml_code
+                - task: UsePythonVersion@0
+                  inputs:
+                    versionSpec: "3.11"
+                - script: pip install -r ml/requirements.txt
+                  displayName: "Install ML dependencies"
+                - script: pip install azure-ai-ml
+                  displayName: "Install Azure ML SDK"
+                - script: |
+                    python ml/pipeline/submit.py \
+                      --workspace $(AML_WS) \
+                      --resource-group $(AML_RG)
+                  displayName: "Submit AML pipeline job"
