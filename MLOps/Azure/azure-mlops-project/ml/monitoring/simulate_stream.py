@@ -1,5 +1,7 @@
-import time, argparse, pandas as pd, numpy as np
+import time
+import argparse
 from azure.storage.blob import BlobServiceClient
+from sklearn.datasets import load_iris
 
 p = argparse.ArgumentParser()
 p.add_argument('--conn', required=True)
@@ -13,7 +15,6 @@ svc = BlobServiceClient.from_connection_string(args.conn)
 container = svc.get_container_client(args.container)
 container.create_container(exist_ok=True)
 
-from sklearn.datasets import load_iris
 X, y = load_iris(return_X_y=True, as_frame=True)
 
 cycle = 0
