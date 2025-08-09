@@ -95,8 +95,9 @@ stages:
           - script: pytest $(ml_code)/tests
             displayName: "Run tests"
 
-  - publish: ml
-    artifact: ml_code
+          - publish: ml
+            artifact: ml_code
+
 
   - stage: ML_CD
     displayName: "Machine Learning CD"
