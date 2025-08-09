@@ -10,6 +10,6 @@ if not all([sub, rg, ws]):
     sys.exit(2)
 
 client = MLClient(DefaultAzureCredential(), sub, rg, ws)
-job = load_job("ml/pipelines/training_pipeline.yml")
+job = load_job("MLOps/Azure/azure-mlops-project/ml/pipelines/training_pipeline.yml")
 submitted = client.jobs.create_or_update(job)
 print("Submitted training:", submitted.name)
