@@ -6,7 +6,8 @@ from azure.ai.ml import MLClient, load_job
 p = argparse.ArgumentParser()
 p.add_argument('--workspace', required=True)
 p.add_argument('--resource-group', required=True)
-p.add_argument('--subscription', default=os.environ.get('AZURE_SUBSCRIPTION_ID'))
+p.add_argument('--subscription', 
+               default=os.environ.get('AZURE_SUBSCRIPTION_ID'))
 args = p.parse_args()
 
 if not args.subscription:
@@ -26,9 +27,10 @@ here = Path(__file__).resolve().parent
 yaml_path = here / "pipeline.yml"
 
 if not yaml_path.exists():
-    print(f"ERROR: pipeline.yml not found at {yaml_path}", file=sys.stderr)
+    print(f"ERROR: pipeline.yml not found at {yaml_path}", 
+          file=sys.stderr)
     sys.exit(2)
-
-job = load_job(str(yaml_path))  # positional arg for older azure-ai-ml versions
+# positional arg for older azure-ai-ml versions
+job = load_job(str(yaml_path))  
 submitted = ml_client.jobs.create_or_update(job)
 print(f"Submitted: {submitted.name}")
