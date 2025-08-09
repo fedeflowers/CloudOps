@@ -10,8 +10,8 @@ pr:
 
   paths:
     include:
-      - azure/terraform/**                 
-      - .azuredevops/pipelines/infra/**    
+      - MLOps/Azure/azure-mlops-project/azure/terraform/**                 
+      - MLOps/Azure/azure-mlops-project/.azuredevops/pipelines/infra/**    
 
 pool:
   name: 'Default'
