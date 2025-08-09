@@ -11,7 +11,7 @@ p.add_argument('--subscription',
 args = p.parse_args()
 
 if not args.subscription:
-    print("ERROR: --subscription not provided and AZURE_SUBSCRIPTION_ID not set.",
+    print("ERROR: --subscription not provided and AZURE_SUBSCRIPTION_ID not set",
           file=sys.stderr)
     sys.exit(2)
 
