@@ -174,5 +174,4 @@ stages:
                   displayName: "Submit AML pipeline job"
                   inputs:
                     scriptSource: filePath
-                    scriptPath: $(Build.SourcesDirectory)/MLOps/Azure/azure-mlops-project/ml/pipeline/submit.py
-                    arguments: --workspace "$(AML_WS)" --resource-group "$(AML_RG)"
+                    scriptPath: $(Build.SourcesDirectory)/MLOps/Azure/azure-mlops-project/ml/tools/submit_training.py

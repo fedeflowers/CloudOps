@@ -53,4 +53,24 @@ resource "azurerm_machine_learning_workspace" "aml" {
   identity {
     type = "SystemAssigned"
   }
+  
+}
+
+resource "azurerm_machine_learning_compute_cluster" "cpu_cluster" {
+  name                             = "${local.name}-cpu-cluster"
+  location                         = var.location
+  machine_learning_workspace_id     = azurerm_machine_learning_workspace.aml.id
+  vm_size                          = "STANDARD_D2_V2"
+  vm_priority                      = "Dedicated"
+
+  scale_settings {
+    min_node_count = 0
+    max_node_count = 2
+    scale_down_nodes_after_idle_duration = "PT5M"
+  }
+}
+
+resource "azurerm_storage_data_lake_gen2_filesystem" "ml_data" {
+  name               = "ml-data"
+  storage_account_id = azurerm_storage_account.sa.id
 }
