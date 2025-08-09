@@ -16,6 +16,7 @@ stages:
         pool:
           name: 'Default'
         steps:
+          # Install depency step, runs on local Agent, AI generated script
           - powershell: |
               $ErrorActionPreference = 'Stop'
 
