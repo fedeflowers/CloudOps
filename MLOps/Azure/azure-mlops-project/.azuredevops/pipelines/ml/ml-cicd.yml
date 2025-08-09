@@ -7,6 +7,9 @@ trigger:
       - MLOps/Azure/azure-mlops-project/ml/**
       - MLOps/Azure/azure-mlops-project/.azuredevops/pipelines/ml/**
 
+variables:
+  - group: dev_vars
+
 stages:
   - stage: ML_CI
     displayName: "Machine Learning CI"
@@ -73,13 +76,13 @@ stages:
               # Sanity check
               & $py -m pip --version
             displayName: "Install portable Python 3.11 (embeddable)"
-          - script: pip install -r MLOps/Azure/azure-mlops-project/ml/requirements.txt
+          - script: pip install -r $(ml_code)/requirements.txt
             displayName: "Install dependencies"
           - script: pip install flake8 pytest
             displayName: "Install dev tools"
-          - script: flake8 ml
+          - script: flake8 $(ml_code)
             displayName: "Lint code"
-          - script: pytest ml/tests
+          - script: pytest $(ml_code)/tests
             displayName: "Run tests"
           - publish: ml
             artifact: ml_code
