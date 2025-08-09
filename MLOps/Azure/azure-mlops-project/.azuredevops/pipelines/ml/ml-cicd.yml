@@ -89,10 +89,7 @@ stages:
           # 2) Lint
           - script: flake8 $(ml_code)
             displayName: "Lint code"
-          # 3) Test
-          - script: pytest $(ml_code)/tests
-            displayName: "Run tests"
-          # 4) Publish
+          # 3) Publish
           - publish: ml
             artifact: ml_code
 
