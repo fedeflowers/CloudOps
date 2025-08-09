@@ -78,14 +78,25 @@ stages:
             displayName: "Install portable Python 3.11 (embeddable)"
           - script: pip install -r $(ml_code)/requirements.txt
             displayName: "Install dependencies"
-          - script: pip install flake8 pytest
+          - script: pip install black isort autoflake flake8 pytest
             displayName: "Install dev tools"
+          # 1) Clean imports & remove unused
+          - script: |
+              autoflake --remove-all-unused-imports --remove-unused-variables --in-place -r $(ml_code)
+              isort $(ml_code) --profile black
+              black $(ml_code)
+            displayName: "Auto-format (autoflake + isort + black)"
+
+          # 2) Lint
           - script: flake8 $(ml_code)
             displayName: "Lint code"
+
+          # 3) Test
           - script: pytest $(ml_code)/tests
             displayName: "Run tests"
-          - publish: ml
-            artifact: ml_code
+
+  - publish: ml
+    artifact: ml_code
 
   - stage: ML_CD
     displayName: "Machine Learning CD"
