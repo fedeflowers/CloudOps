@@ -84,17 +84,15 @@ stages:
           - script: |
               autoflake --remove-all-unused-imports --remove-unused-variables --in-place -r $(ml_code)
               isort $(ml_code) --profile black
-              black $(ml_code)
+              black $(ml_code) --line-length 79
             displayName: "Auto-format (autoflake + isort + black)"
-
           # 2) Lint
           - script: flake8 $(ml_code)
             displayName: "Lint code"
-
           # 3) Test
           - script: pytest $(ml_code)/tests
             displayName: "Run tests"
-
+          # 4) Publish
           - publish: ml
             artifact: ml_code
 
