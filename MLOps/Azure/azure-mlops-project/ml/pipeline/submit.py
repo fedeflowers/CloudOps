@@ -10,5 +10,5 @@ p.add_argument('--subscription', default=os.environ.get('AZURE_SUBSCRIPTION_ID')
 args = p.parse_args()
 
 ml_client = MLClient(DefaultAzureCredential(), args.subscription, args.resource_group, args.workspace)
-job = ml_client.jobs.create_or_update(Job.load('ml/pipeline/pipeline.yml'))
+job = ml_client.jobs.create_or_update(Job.load('MLOps/Azure/azure-mlops-project/ml/pipeline/pipeline.yml'))
 print(f"Submitted: {job.name}")
