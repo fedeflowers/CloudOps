@@ -16,39 +16,30 @@ stages:
         pool:
           name: 'Default'
         steps:
+          # 1) Install a portable Python 3.11 into .python and add it to PATH
           - powershell: |
               $ver  = "3.11.9"
-              $url  = "https://www.python.org/ftp/python/$ver/python-$ver-embed-amd64.zip"
               $root = "$(Build.SourcesDirectory)"
               $dest = Join-Path $root ".python"
               $zip  = Join-Path $root "python-$ver.zip"
 
               New-Item -ItemType Directory -Force -Path $dest | Out-Null
-              Invoke-WebRequest -Uri $url -OutFile $zip
-
+              Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$ver/python-$ver-embed-amd64.zip" -OutFile $zip
               Add-Type -AssemblyName System.IO.Compression.FileSystem
               [IO.Compression.ZipFile]::ExtractToDirectory($zip, $dest, $true)
 
-              # Enable site-packages by ensuring 'import site' is active
-              $pth = Get-ChildItem (Join-Path $dest "python*._pth") | Select-Object -First 1
-              if ($null -eq $pth) {
-                # Fallback: create a minimal _pth file if it wasn't present for any reason
-                $pth = Join-Path $dest "python311._pth"
-                Set-Content -Path $pth -Value "import site"
-              } else {
-                (Get-Content $pth.FullName) -replace '^\s*#\s*import site\s*$', 'import site' | Set-Content $pth.FullName
-              }
+              # Enable site-packages (embeddable needs this)
+              Set-Content -Path (Join-Path $dest "python311._pth") -Value "import site"
 
-              # Put embeddable Python on PATH for later steps
-              Write-Host "##vso[task.setvariable variable=PYTHON_HOME]$dest"
+              # Put Python on PATH for next steps
               Write-Host "##vso[task.prependpath]$dest"
 
-              # Bootstrap pip (embeddable doesn't include pip)
-              $gp = Join-Path $root "get-pip.py"
-              Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $gp
-              & "$dest\python.exe" $gp
+              # Bootstrap pip
+              Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile (Join-Path $root "get-pip.py")
+              & "$dest\python.exe" "$(Build.SourcesDirectory)\get-pip.py"
               & "$dest\python.exe" -m pip --version
-            displayName: "Install portable Python 3.11 (embeddable)"
+            displayName: "Install portable Python 3.11"
+
           - script: pip install -r ml/requirements.txt
             displayName: "Install dependencies"
           - script: pip install flake8 pytest
