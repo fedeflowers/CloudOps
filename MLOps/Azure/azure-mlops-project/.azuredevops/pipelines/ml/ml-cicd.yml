@@ -90,7 +90,7 @@ stages:
           - script: flake8 $(ml_code)
             displayName: "Lint code"
           # 3) Publish
-          - publish: ml
+          - publish: $(Build.ArtifactStagingDirectory)
             artifact: ml_code
 
 
