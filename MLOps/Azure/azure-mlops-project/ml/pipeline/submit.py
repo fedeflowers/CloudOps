@@ -1,4 +1,5 @@
-import argparse, os
+import argparse, os, sys
+from pathlib import Path
 from azure.identity import DefaultAzureCredential
 from azure.ai.ml import MLClient, load_job
 
@@ -8,6 +9,10 @@ p.add_argument('--resource-group', required=True)
 p.add_argument('--subscription', default=os.environ.get('AZURE_SUBSCRIPTION_ID'))
 args = p.parse_args()
 
+if not args.subscription:
+    print("ERROR: --subscription not provided and AZURE_SUBSCRIPTION_ID not set.", file=sys.stderr)
+    sys.exit(2)
+
 ml_client = MLClient(
     DefaultAzureCredential(),
     subscription_id=args.subscription,
@@ -15,10 +20,14 @@ ml_client = MLClient(
     workspace_name=args.workspace,
 )
 
-# Resolve YAML path relative to this script so it works in CI
-here = os.path.dirname(os.path.abspath(__file__))
-yaml_path = os.path.join(here, "MLOps", "Azure", "azure-mlops-project", "ml", "pipeline", "pipeline.yml")
+# pipeline.yml sits next to this script
+here = Path(__file__).resolve().parent
+yaml_path = here / "pipeline.yml"
 
-job = load_job(yaml_path)
+if not yaml_path.exists():
+    print(f"ERROR: pipeline.yml not found at {yaml_path}", file=sys.stderr)
+    sys.exit(2)
+
+job = load_job(str(yaml_path))  # positional arg for older azure-ai-ml versions
 submitted = ml_client.jobs.create_or_update(job)
 print(f"Submitted: {submitted.name}")
