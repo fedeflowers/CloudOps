@@ -6,13 +6,20 @@ terraform {
       source  = "hashicorp/azurerm"
       version = ">= 3.114.0"
     }
+    azapi = {
+      source  = "azure/azapi"
+      version = "~> 2.0"
+    }
   }
+
   backend "azurerm" {}
 }
 
 provider "azurerm" {
   features {}
 }
+
+provider "azapi" {}
 
 resource "azurerm_resource_group" "rg" {
   name     = "${var.prefix}-${var.environment}-rg"

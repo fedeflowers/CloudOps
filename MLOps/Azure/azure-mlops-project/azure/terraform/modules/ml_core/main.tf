@@ -75,14 +75,38 @@ resource "azurerm_storage_data_lake_gen2_filesystem" "ml_data" {
   storage_account_id = azurerm_storage_account.sa.id
 }
 
-resource "azurerm_machine_learning_environment" "sklearn_env" {
-  name                = "sklearn-env"
-  resource_group_name = var.rg_name
-  workspace_name      = azurerm_machine_learning_workspace.aml.name
-  description         = "Environment for sklearn models"
-  environment_type    = "Conda"
-  conda_file          = file("${path.module}/../../../../ml/environments/sklearn-env.yml")
-  docker {
-    base_image = "mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:202406"
-  }
+# 1) Environment container (the named environment)
+resource "azapi_resource" "sklearn_env" {
+  type      = "Microsoft.MachineLearningServices/workspaces/environments@2024-04-01"
+  name      = "sklearn-env"  # environment name
+  parent_id = azurerm_machine_learning_workspace.aml.id
+
+  body = jsonencode({
+    properties = {
+      description = "Environment for sklearn models"
+      isArchived  = false
+      # optional: properties/tags here
+    }
+  })
+}
+
+# 2) Environment version (where image/conda are set)
+resource "azapi_resource" "sklearn_env_v1" {
+  type      = "Microsoft.MachineLearningServices/workspaces/environments/versions@2024-04-01"
+  name      = "1"  # version string
+  parent_id = azapi_resource.sklearn_env.id
+
+  body = jsonencode({
+    properties = {
+      osType     = "Linux"
+      # Use either image, or build, or condaFile (any combo AML supports)
+      image      = "mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:202406"
+      condaFile  = file("${path.module}/../../../../ml/environments/sklearn-env.yml")
+      description = "v1 of sklearn env"
+      isArchived  = false
+    }
+  })
+
+  # Make the dependency explicit (optional but nice)
+  depends_on = [azapi_resource.sklearn_env]
 }
