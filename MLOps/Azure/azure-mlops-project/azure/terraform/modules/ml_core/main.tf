@@ -74,3 +74,15 @@ resource "azurerm_storage_data_lake_gen2_filesystem" "ml_data" {
   name               = "ml-data"
   storage_account_id = azurerm_storage_account.sa.id
 }
+
+resource "azurerm_machine_learning_environment" "sklearn_env" {
+  name                = "sklearn-env"
+  resource_group_name = var.rg_name
+  workspace_name      = azurerm_machine_learning_workspace.aml.name
+  description         = "Environment for sklearn models"
+  environment_type    = "Conda"
+  conda_file          = file("${path.module}/../../../../ml/environments/sklearn-env.yml")
+  docker {
+    base_image = "mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:202406"
+  }
+}

@@ -13,3 +13,7 @@ output "kv_name" {
 output "storage_account_name" {
   value = azurerm_storage_account.sa.name
 }
+
+output "sklearn_env_name" {
+  value = azurerm_machine_learning_environment.sklearn_env.name
+}

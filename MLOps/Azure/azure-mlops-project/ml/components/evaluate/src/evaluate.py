@@ -19,6 +19,7 @@ if preds.ndim == 2: preds = preds.argmax(axis=1)
 acc = float(accuracy_score(y, preds))
 print("accuracy=", acc)
 
-if acc < args.min_acc:
-    print(f"Accuracy {acc:.4f} below threshold {args.min_acc:.4f}", file=sys.stderr)
+float_min_acc = float(args.min_acc)
+if acc < float_min_acc:
+    print(f"Accuracy {acc:.4f} below threshold {float_min_acc:.4f}", file=sys.stderr)
     sys.exit(3)

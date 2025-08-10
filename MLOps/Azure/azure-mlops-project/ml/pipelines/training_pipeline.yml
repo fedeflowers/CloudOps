@@ -17,10 +17,10 @@ inputs:
     type: uri_file
     path: azureml:iris-baseline:1
   min_acc:
-    type: number
+    type: string
     default: 0.90
   drift_threshold:
-    type: number
+    type: string
     default: 0.15
 
 outputs:
