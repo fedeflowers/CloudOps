@@ -89,40 +89,24 @@ resource "azurerm_storage_data_lake_gen2_filesystem" "ml_data" {
   storage_account_id = azurerm_storage_account.sa.id
 }
 
-# Environment container (keep 2024-04-01)
-resource "azapi_resource" "sklearn_env" {
-  type      = "Microsoft.MachineLearningServices/workspaces/environments@2024-04-01"
-  name      = "sklearn-env"
-  parent_id = azurerm_machine_learning_workspace.aml.id
-
-  body = {
-    properties = {
-      description = "Environment for sklearn models"
-      isArchived  = false
-    }
-  }
-
-  # TEMP: print ARM response so applies show real errors
-  response_export_values = ["*"]
-}
-
-# Environment version (bump API; add debug + depends_on)
 resource "azapi_resource" "sklearn_env_v1" {
   type      = "Microsoft.MachineLearningServices/workspaces/environments/versions@2025-06-01"
   name      = "1"
-  parent_id = azapi_resource.sklearn_env.id
+
+  # Point directly under the workspace + container name
+  parent_id = "${azurerm_machine_learning_workspace.aml.id}/environments/sklearn-env"
 
   body = {
     properties = {
       osType      = "Linux"
       image       = "mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:202406"
-      # NOTE: this must resolve on the build agent at *apply* time
+      # file() must resolve on the build agent at *apply* time
       condaFile   = file("${path.module}/../../../../ml/environments/sklearn-env.yml")
       description = "v1 of sklearn env"
       isArchived  = false
     }
   }
 
+  # TEMP: print the full ARM response to see any errors during apply
   response_export_values = ["*"]
-  depends_on = [azapi_resource.sklearn_env]
 }

@@ -14,6 +14,12 @@ output "storage_account_name" {
   value = azurerm_storage_account.sa.name
 }
 
+output "sklearn_env_name" {
+  value = "sklearn-env"
+}
+output "sklearn_env_version_name" {
+  value = azapi_resource.sklearn_env_v1.name
+}
 output "sklearn_env_version_id" {
   value = azapi_resource.sklearn_env_v1.id
 }
