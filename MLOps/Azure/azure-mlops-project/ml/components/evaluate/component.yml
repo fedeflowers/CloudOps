@@ -7,10 +7,10 @@ description: Evaluate and fail if below threshold.
 
 inputs:
   model_dir: { type: uri_folder }
-  min_acc: { type: number }
+  min_acc:   { type: number }
+
 
 code: ./src
-environment: ../../environments/sklearn-env.yml
 command: >-
   python evaluate.py
   --model ${{inputs.model_dir}}

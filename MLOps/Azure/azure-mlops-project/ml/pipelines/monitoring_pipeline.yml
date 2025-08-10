@@ -3,6 +3,7 @@ type: pipeline
 
 settings:
   default_compute: azureml:cpu-cluster
+  default_environment: azureml:sklearn-env:1  
   continue_on_step_failure: false
 
 inputs:

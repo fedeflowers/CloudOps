@@ -6,15 +6,15 @@ display_name: drift_check
 description: Compare baseline vs latest and emit DRIFT/NO_DRIFT.
 
 inputs:
-  baseline: { type: uri_file }
-  latest_data: { type: uri_folder }  # supports MLTable or folder of CSVs/Parquet
-  threshold: { type: number }
+  baseline:     { type: uri_file }
+  latest_data:  { type: uri_folder }
+  threshold:    { type: number }
+
 
 outputs:
   drift_signal: { type: uri_file }
 
 code: ./src
-environment: ../../environments/sklearn-env.yml
 command: >-
   python drift_check.py
   --baseline ${{inputs.baseline}}

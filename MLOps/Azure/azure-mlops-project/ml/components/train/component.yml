@@ -12,7 +12,6 @@ outputs:
   model_dir: { type: uri_folder }
 
 code: ./src
-environment: ../../environments/sklearn-env.yml
 command: >-
   python train.py
   --data ${{inputs.train_folder}}

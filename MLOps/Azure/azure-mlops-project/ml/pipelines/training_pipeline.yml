@@ -3,25 +3,16 @@ type: pipeline
 
 settings:
   default_compute: azureml:cpu-cluster
+  default_environment: azureml:sklearn-env:1
   continue_on_step_failure: false
 
-# All inputs come from Azure Storage (no local files)
 inputs:
-  # Latest data: folder or MLTable in the raw datastore
   latest_data:
     type: uri_folder
-    # Example: points at a container path that contains an MLTable file and partitions
     path: azureml://datastores/raw/paths/landing
-  # Baseline: versioned immutable data asset (registered once)
   baseline:
     type: uri_file
     path: azureml:iris-baseline:1
-  min_acc:
-    type: number
-    default: 0.9
-  drift_threshold:
-    type: number
-    default: 0.15
 
 outputs:
   model_out: { type: uri_folder }
@@ -33,7 +24,7 @@ jobs:
     inputs:
       baseline: ${{parent.inputs.baseline}}
       latest_data: ${{parent.inputs.latest_data}}
-      threshold: ${{parent.inputs.drift_threshold}}
+      threshold: 0.15            # <— literal here
     outputs:
       drift_signal: {}
 
@@ -59,11 +50,11 @@ jobs:
     component: ../components/evaluate/component.yml
     inputs:
       model_dir: ${{parent.jobs.train.outputs.model_dir}}
-      min_acc: ${{parent.inputs.min_acc}}
+      min_acc: 0.9               # <— literal here
 
   register_deploy:
     type: command
-    environment: azureml:sklearn-env:1   
+    # inherits env from settings.default_environment
     code: ../deployment/src
     inputs:
       model_dir: ${{parent.jobs.train.outputs.model_dir}}
