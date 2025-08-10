@@ -17,10 +17,10 @@ inputs:
     type: uri_file
     path: azureml:iris-baseline:1
   min_acc:
-    type: string
-    default: 0.90
+    type: number
+    default: 0.9
   drift_threshold:
-    type: string
+    type: number
     default: 0.15
 
 outputs:
@@ -63,7 +63,7 @@ jobs:
 
   register_deploy:
     type: command
-    environment: ../environments/sklearn-env.yml
+    environment: azureml:sklearn-env:1   
     code: ../deployment/src
     inputs:
       model_dir: ${{parent.jobs.train.outputs.model_dir}}
