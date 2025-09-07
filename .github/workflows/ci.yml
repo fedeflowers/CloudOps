@@ -1,0 +1,58 @@
+name: CI - train + test + drift
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  # schedule:
+  #   - cron: '0 2 * * *' # daily run at 02:00 UTC
+
+jobs:
+  setup-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Start MLflow (file store)
+        run: |
+          mkdir -p mlruns
+          nohup mlflow server --backend-store-uri file://$PWD/mlruns --default-artifact-root $PWD/mlruns/artifacts --host 127.0.0.1 --port 5000 &
+          sleep 2
+
+      - name: Train and log model
+        env:
+          MLFLOW_TRACKING_URI: file://$GITHUB_WORKSPACE/mlruns
+        run: python src/train.py
+
+      - name: Compute baseline feature stats
+        run: python src/evaluate.py
+
+      - name: Run drift detection
+        run: |
+          python -c "from src.utils import load_example_dataset, split; import pandas as pd; df=load_example_dataset(); X_train, X_test, *_=split(df,test_size=0.4); pd.DataFrame(X_train).to_csv('baseline.csv', index=False); pd.DataFrame(X_test).to_csv('current.csv', index=False);"
+          python src/drift.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ml-artifacts
+          path: |
+            mlruns
+            artifacts
+            baseline.csv
+            current.csv
