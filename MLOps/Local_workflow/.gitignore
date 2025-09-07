@@ -1,0 +1,36 @@
+
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+*.log
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+
+# MLflow runs
+mlruns/
+MLOps/Local_workflow/mlruns
+
+# Model artifacts
+artifacts/
+*.joblib
+*.pkl
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
