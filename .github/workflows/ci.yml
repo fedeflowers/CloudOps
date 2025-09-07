@@ -26,33 +26,50 @@ jobs:
           pip install -r MLOps/Local_workflow/requirements.txt
 
       - name: Run tests
+        working-directory: MLOps/Local_workflow
         run: pytest -q
 
+            # use this inside your .github/workflows/ci.yml (at repo root)
       - name: Start MLflow (file store)
+        working-directory: MLOps/Local_workflow
+        env:
+          # Optional: if you want MLflow to be accessible by other steps via this env
+          MLFLOW_TRACKING_URI: file://${{ github.workspace }}/MLOps/Local_workflow/mlruns
         run: |
           mkdir -p mlruns
           nohup mlflow server --backend-store-uri file://$PWD/mlruns --default-artifact-root $PWD/mlruns/artifacts --host 127.0.0.1 --port 5000 &
           sleep 2
 
       - name: Train and log model
+        working-directory: MLOps/Local_workflow
         env:
-          MLFLOW_TRACKING_URI: file://$GITHUB_WORKSPACE/mlruns
+          PYTHONPATH: ${{ github.workspace }}/MLOps/Local_workflow
+          MLFLOW_TRACKING_URI: file://${{ github.workspace }}/MLOps/Local_workflow/mlruns
         run: python src/train.py
 
       - name: Compute baseline feature stats
+        working-directory: MLOps/Local_workflow
+        env:
+          PYTHONPATH: ${{ github.workspace }}/MLOps/Local_workflow
+          MLFLOW_TRACKING_URI: file://${{ github.workspace }}/MLOps/Local_workflow/mlruns
         run: python src/evaluate.py
 
       - name: Run drift detection
+        working-directory: MLOps/Local_workflow
+        env:
+          PYTHONPATH: ${{ github.workspace }}/MLOps/Local_workflow
         run: |
           python -c "from src.utils import load_example_dataset, split; import pandas as pd; df=load_example_dataset(); X_train, X_test, *_=split(df,test_size=0.4); pd.DataFrame(X_train).to_csv('baseline.csv', index=False); pd.DataFrame(X_test).to_csv('current.csv', index=False);"
           python src/drift.py
 
       - name: Upload artifacts
+        # run from repo root or subfolder; here we use repo-root paths so uploader finds them
         uses: actions/upload-artifact@v4
         with:
           name: ml-artifacts
           path: |
-            mlruns
-            artifacts
-            baseline.csv
-            current.csv
+            MLOps/Local_workflow/mlruns
+            MLOps/Local_workflow/artifacts
+            MLOps/Local_workflow/baseline.csv
+            MLOps/Local_workflow/current.csv
+
