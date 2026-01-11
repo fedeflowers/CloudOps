@@ -108,7 +108,6 @@ Wait for ArgoCD to sync the application. You can check the status via the UI or 
 **Grafana:**
 *   *[Coming Soon]* `http://localhost:3000`
 
-## 🧠 Interview Talking Points
 
 ### Zero-Downtime Deployment
 I implemented **RollingUpdates** with readiness probes. When a new version is pushed to Git, ArgoCD gradually replaces pods. The `readinessProbe` ensures traffic is not sent to a pod until it's fully initialized, guaranteeing zero 500 errors during updates.
