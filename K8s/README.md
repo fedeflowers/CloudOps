@@ -2,8 +2,8 @@
 
 ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
 ![Argocd](https://img.shields.io/badge/argo-%23E55B3C.svg?style=for-the-badge&logo=argo&logoColor=white)
-![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=Prometheus&logoColor=white)
-![Grafana](https://img.shields.io/badge/grafana-%23F46800.svg?style=for-the-badge&logo=grafana&logoColor=white)
+<!-- ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=Prometheus&logoColor=white) -->
+<!-- ![Grafana](https://img.shields.io/badge/grafana-%23F46800.svg?style=for-the-badge&logo=grafana&logoColor=white) -->
 
 This project demonstrates a production-grade **Kubernetes** environment running locally using **Kind**, managed via **GitOps (ArgoCD)**, and monitored with **Prometheus/Grafana**. It serves as a showcase of CloudOps skills including traffic management, auto-scaling, and self-healing infrastructure.
 
@@ -37,8 +37,8 @@ graph TD
 *   **GitOps Workflow**: Application state is defined in Git and automatically synced by ArgoCD.
 *   **Infrastructure as Code**: Local environment provisioning via Terraform-like manifest management.
 *   **Traffic Management**: NGINX Ingress Controller handling routing and TLS termination.
-*   **Observability**: Full metrics pipeline with Prometheus and Grafana dashboards.
 *   **High Availability**: Stateless apps managed by Replocasets; Self-healing via Liveness/Readiness probes.
+*   **Observability**: *[Planned]* Full metrics pipeline with Prometheus and Grafana dashboards.
 
 ## 🛠 Prerequisites
 
@@ -85,18 +85,28 @@ Install ArgoCD and configure the root application.
 # Install ArgoCD
 kubectl create namespace argocd
 kubectl apply -n argocd -f argocd/install.yaml
+kubectl apply -n argocd -f argocd/ingress.yaml
 
 # Apply the GitOps Application
 kubectl apply -f argocd/application.yaml
 ```
 
-ArgoCD will now automatically detect the `apps/` directory and deploy the **Google Microservices Demo**.
+### 4. Verify & Access
+Wait for ArgoCD to sync the application. You can check the status via the UI or CLI.
 
-## 📊 Accessing the Application
+**Access ArgoCD UI:**
+1.  **URL:** `https://argocd.localhost:8443` (Accept self-signed cert warning)
+2.  **Username:** `admin`
+3.  **Password:** Run this command to get the initial password:
+    ```bash
+    kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo
+    ```
 
-*   **Web Frontend**: `http://localhost:80` (Proxied via NGINX)
-*   **ArgoCD UI**: `http://localhost:8080/argocd` (Requires port-forwarding)
-*   **Grafana**: `http://localhost:3000` (Requires port-forwarding)
+**Access Web Frontend:**
+*   **URL**: `http://localhost:80` (Proxied via NGINX Ingress)
+
+**Grafana:**
+*   *[Coming Soon]* `http://localhost:3000`
 
 ## 🧠 Interview Talking Points
 
