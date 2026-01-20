@@ -1,0 +1,153 @@
+# Git ignore patterns for Databricks CI/CD project
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# =============================================================================
+# Terraform
+# =============================================================================
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Lock files (optional - some teams commit this)
+# .terraform.lock.hcl
+
+# Plan output files
+*.tfplan
+tfplan
+
+# =============================================================================
+# Databricks
+# =============================================================================
+# Databricks CLI configuration (contains tokens)
+.databrickscfg
+
+# Bundle artifacts
+.bundle/
+.databricks/
+
+# =============================================================================
+# IDE and Editors
+# =============================================================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# Testing
+# =============================================================================
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+
+# Test results
+test-results/
+junit.xml
+
+# =============================================================================
+# OS Files
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =============================================================================
+# Secrets and Configuration
+# =============================================================================
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# Secret files
+*secret*
+*Secret*
+*.pem
+*.key
+
+# Local configuration overrides
+config/local.yml
+config/*.local.yml
+
+# =============================================================================
+# Logs
+# =============================================================================
+*.log
+logs/
+
+# =============================================================================
+# Temporary Files
+# =============================================================================
+tmp/
+temp/
+*.tmp
+*.temp

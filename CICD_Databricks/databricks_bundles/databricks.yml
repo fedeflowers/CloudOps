@@ -1,0 +1,121 @@
+# =============================================================================
+# Databricks Asset Bundle Configuration
+# =============================================================================
+# Main bundle configuration for deploying workflows and jobs.
+# Documentation: https://docs.databricks.com/dev-tools/bundles/
+# =============================================================================
+
+bundle:
+  name: databricks_cicd_bundle
+
+# -----------------------------------------------------------------------------
+# Workspace Configuration
+# -----------------------------------------------------------------------------
+workspace:
+  # Root path in the workspace for bundle artifacts
+  root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
+# -----------------------------------------------------------------------------
+# Include Resource Definitions
+# -----------------------------------------------------------------------------
+include:
+  - resources/*.yml
+
+# -----------------------------------------------------------------------------
+# Artifacts (Python Wheel, etc.)
+# -----------------------------------------------------------------------------
+artifacts:
+  default:
+    type: whl
+    path: ./src
+    build: python setup.py bdist_wheel
+
+# -----------------------------------------------------------------------------
+# Sync Configuration
+# -----------------------------------------------------------------------------
+sync:
+  include:
+    - "src/**/*.py"
+    - "notebooks/**/*.py"
+    - "notebooks/**/*.sql"
+  exclude:
+    - "**/__pycache__/**"
+    - "**/.pytest_cache/**"
+    - "**/test_*.py"
+
+# -----------------------------------------------------------------------------
+# Environment Targets
+# -----------------------------------------------------------------------------
+targets:
+  # ---------------------------------------------------------------------------
+  # Development Environment
+  # ---------------------------------------------------------------------------
+  dev:
+    default: true
+    mode: development
+    
+    workspace:
+      host: https://adb-1234567890123456.16.azuredatabricks.net
+    
+    variables:
+      catalog: dev_bronze
+      schema: raw_sales
+      environment: dev
+    
+    resources:
+      jobs:
+        sales_ingestion_job:
+          name: "[DEV] Sales Data Ingestion"
+          
+        data_transformation_job:
+          name: "[DEV] Data Transformation Pipeline"
+
+  # ---------------------------------------------------------------------------
+  # Production Environment
+  # ---------------------------------------------------------------------------
+  prod:
+    mode: production
+    
+    workspace:
+      host: https://adb-9876543210987654.16.azuredatabricks.net
+    
+    variables:
+      catalog: bronze
+      schema: raw_sales
+      environment: prod
+    
+    # Production-specific run_as configuration
+    run_as:
+      service_principal_name: sp-databricks-cicd
+    
+    resources:
+      jobs:
+        sales_ingestion_job:
+          name: "[PROD] Sales Data Ingestion"
+          # Production jobs run on schedule
+          schedule:
+            quartz_cron_expression: "0 0 6 * * ?"
+            timezone_id: Europe/Rome
+          
+        data_transformation_job:
+          name: "[PROD] Data Transformation Pipeline"
+          schedule:
+            quartz_cron_expression: "0 30 6 * * ?"
+            timezone_id: Europe/Rome
+
+# -----------------------------------------------------------------------------
+# Variables
+# -----------------------------------------------------------------------------
+variables:
+  catalog:
+    description: "Target catalog for data operations"
+    default: dev_bronze
+  
+  schema:
+    description: "Target schema for data operations"
+    default: raw_sales
+  
+  environment:
+    description: "Deployment environment (dev/prod)"
+    default: dev
+

@@ -1,0 +1,198 @@
+# =============================================================================
+# DQx Configuration
+# =============================================================================
+# Data quality framework configuration for post-deployment validation.
+# =============================================================================
+
+# General settings
+dqx:
+  version: "1.0"
+  environment: "${var.environment}"
+  
+  # Results storage
+  results:
+    catalog: "gold"
+    schema: "dqx"
+    table: "quality_results"
+    history_days: 90
+  
+  # Default thresholds
+  defaults:
+    row_count_deviation_pct: 10
+    freshness_hours: 24
+    null_tolerance_pct: 5
+    duplicate_tolerance_pct: 0
+  
+  # Alerting configuration
+  alerting:
+    enabled: true
+    channels:
+      - type: email
+        recipients:
+          - data-quality-alerts@company.com
+      - type: slack
+        webhook_url: "${var.slack_webhook_url}"
+    
+    # Alert levels
+    levels:
+      critical:
+        notify_immediately: true
+        block_pipeline: true
+      warning:
+        notify_immediately: false
+        block_pipeline: false
+      info:
+        notify_immediately: false
+        block_pipeline: false
+
+# =============================================================================
+# Quality Rule Definitions
+# =============================================================================
+rules:
+  # ---------------------------------------------------------------------------
+  # Bronze Layer Checks
+  # ---------------------------------------------------------------------------
+  bronze:
+    - name: "bronze_sales_row_count"
+      description: "Verify bronze sales table has data"
+      table: "bronze.raw_sales.raw_sales_transactions"
+      type: "row_count"
+      threshold:
+        min: 1000
+      severity: "critical"
+    
+    - name: "bronze_sales_freshness"
+      description: "Verify bronze data is fresh"
+      table: "bronze.raw_sales.raw_sales_transactions"
+      type: "freshness"
+      column: "_ingestion_timestamp"
+      threshold:
+        max_hours: 6
+      severity: "critical"
+    
+    - name: "bronze_transaction_id_not_null"
+      description: "Transaction IDs should not be null"
+      table: "bronze.raw_sales.raw_sales_transactions"
+      type: "null_check"
+      column: "transaction_id"
+      threshold:
+        max_null_pct: 0
+      severity: "critical"
+
+  # ---------------------------------------------------------------------------
+  # Silver Layer Checks
+  # ---------------------------------------------------------------------------
+  silver:
+    - name: "silver_sales_row_count"
+      description: "Verify silver sales table has expected data"
+      table: "silver.cleaned_sales.sales_transactions"
+      type: "row_count"
+      threshold:
+        min: 900  # Allow for some filtering
+      severity: "critical"
+    
+    - name: "silver_net_amount_valid"
+      description: "Net amounts should be non-negative"
+      table: "silver.cleaned_sales.sales_transactions"
+      type: "custom_sql"
+      query: |
+        SELECT COUNT(*) as violations
+        FROM silver.cleaned_sales.sales_transactions
+        WHERE net_amount < 0
+      threshold:
+        max_violations: 0
+      severity: "critical"
+    
+    - name: "silver_customer_id_format"
+      description: "Customer IDs should match expected format"
+      table: "silver.cleaned_sales.sales_transactions"
+      type: "regex_check"
+      column: "customer_id"
+      pattern: "^CUST[0-9]{4}$"
+      threshold:
+        match_pct: 99.5
+      severity: "warning"
+    
+    - name: "silver_no_future_dates"
+      description: "Transaction dates should not be in the future"
+      table: "silver.cleaned_sales.sales_transactions"
+      type: "custom_sql"
+      query: |
+        SELECT COUNT(*) as violations
+        FROM silver.cleaned_sales.sales_transactions
+        WHERE transaction_date > current_timestamp()
+      threshold:
+        max_violations: 0
+      severity: "critical"
+
+  # ---------------------------------------------------------------------------
+  # Gold Layer Checks
+  # ---------------------------------------------------------------------------
+  gold:
+    - name: "gold_daily_summary_completeness"
+      description: "Daily summary should have recent data"
+      table: "gold.analytics.daily_sales_summary"
+      type: "freshness"
+      column: "_aggregated_timestamp"
+      threshold:
+        max_hours: 24
+      severity: "critical"
+    
+    - name: "gold_customer_ltv_positive"
+      description: "Customer lifetime value should be non-negative"
+      table: "gold.analytics.customer_lifetime_value"
+      type: "custom_sql"
+      query: |
+        SELECT COUNT(*) as violations
+        FROM gold.analytics.customer_lifetime_value
+        WHERE lifetime_value < 0
+      threshold:
+        max_violations: 0
+      severity: "critical"
+    
+    - name: "gold_product_revenue_consistency"
+      description: "Product revenue should match expected totals"
+      table: "gold.analytics.product_performance"
+      type: "cross_table_check"
+      source_query: |
+        SELECT SUM(total_revenue) as gold_total
+        FROM gold.analytics.product_performance
+      target_query: |
+        SELECT SUM(net_amount) as silver_total
+        FROM silver.cleaned_sales.sales_transactions
+      threshold:
+        deviation_pct: 1
+      severity: "warning"
+
+  # ---------------------------------------------------------------------------
+  # Cross-Layer Consistency Checks
+  # ---------------------------------------------------------------------------
+  consistency:
+    - name: "bronze_to_silver_count_check"
+      description: "Silver should have ~90% of bronze records (after filtering)"
+      type: "row_count_ratio"
+      source_table: "bronze.raw_sales.raw_sales_transactions"
+      target_table: "silver.cleaned_sales.sales_transactions"
+      threshold:
+        min_ratio: 0.85
+        max_ratio: 1.0
+      severity: "warning"
+    
+    - name: "unique_customers_consistency"
+      description: "Unique customer count should be consistent across layers"
+      type: "custom_sql"
+      query: |
+        WITH silver_customers AS (
+          SELECT COUNT(DISTINCT customer_id) as cnt
+          FROM silver.cleaned_sales.sales_transactions
+        ),
+        gold_customers AS (
+          SELECT COUNT(DISTINCT customer_id) as cnt
+          FROM gold.analytics.customer_lifetime_value
+        )
+        SELECT 
+          CASE WHEN s.cnt = g.cnt THEN 0 ELSE 1 END as violations
+        FROM silver_customers s, gold_customers g
+      threshold:
+        max_violations: 0
+      severity: "critical"

@@ -1,0 +1,89 @@
+# =============================================================================
+# Databricks CI/CD Pipeline
+# =============================================================================
+# Main pipeline orchestrating all stages:
+# 1. CI - Unit Testing (Pytest)
+# 2. Infrastructure - Terraform Unity Catalog
+# 3. CD - Databricks Asset Bundles Deployment
+# 4. Data Quality - DQx Validation
+# =============================================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - feature/*
+  paths:
+    exclude:
+      - README.md
+      - docs/**
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+# -----------------------------------------------------------------------------
+# Variable Groups (Linked to Azure Key Vault)
+# -----------------------------------------------------------------------------
+variables:
+  - group: databricks-credentials
+  - group: azure-credentials
+  - group: terraform-backend
+  - name: pythonVersion
+    value: '3.10'
+  - name: terraformVersion
+    value: '1.6.0'
+
+# -----------------------------------------------------------------------------
+# Stages
+# -----------------------------------------------------------------------------
+stages:
+  # ===========================================================================
+  # Stage 1: Continuous Integration (Unit Testing)
+  # ===========================================================================
+  - stage: CI
+    displayName: '🧪 Continuous Integration'
+    jobs:
+      - template: templates/ci-stage.yml
+        parameters:
+          pythonVersion: $(pythonVersion)
+
+  # ===========================================================================
+  # Stage 2: Infrastructure Provisioning (Terraform)
+  # ===========================================================================
+  - stage: Infrastructure
+    displayName: '🏗️ Infrastructure Provisioning'
+    dependsOn: CI
+    condition: succeeded()
+    jobs:
+      - template: templates/terraform-stage.yml
+        parameters:
+          terraformVersion: $(terraformVersion)
+          environment: ${{ variables['Build.SourceBranchName'] }}
+
+  # ===========================================================================
+  # Stage 3: Continuous Deployment (DABs)
+  # ===========================================================================
+  - stage: CD
+    displayName: '🚀 Continuous Deployment'
+    dependsOn: Infrastructure
+    condition: succeeded()
+    jobs:
+      - template: templates/dabs-stage.yml
+        parameters:
+          environment: ${{ variables['Build.SourceBranchName'] }}
+
+  # ===========================================================================
+  # Stage 4: Data Quality (DQx)
+  # ===========================================================================
+  - stage: DataQuality
+    displayName: '✅ Data Quality Validation'
+    dependsOn: CD
+    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'main'))
+    jobs:
+      - template: templates/dqx-stage.yml
+        parameters:
+          environment: 'prod'

@@ -1,0 +1,76 @@
+# =============================================================================
+# CI Stage Template - Unit Testing with Pytest
+# =============================================================================
+# Executes unit tests and publishes JUnit XML results.
+# =============================================================================
+
+parameters:
+  - name: pythonVersion
+    type: string
+    default: '3.10'
+
+jobs:
+  - job: UnitTests
+    displayName: 'Run Unit Tests'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+      # -----------------------------------------------------------------------
+      # Setup Python
+      # -----------------------------------------------------------------------
+      - task: UsePythonVersion@0
+        displayName: 'Use Python ${{ parameters.pythonVersion }}'
+        inputs:
+          versionSpec: '${{ parameters.pythonVersion }}'
+          addToPath: true
+
+      # -----------------------------------------------------------------------
+      # Install Dependencies
+      # -----------------------------------------------------------------------
+      - script: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-html
+        displayName: 'Install Dependencies'
+        workingDirectory: $(Build.SourcesDirectory)
+
+      # -----------------------------------------------------------------------
+      # Run Pytest
+      # -----------------------------------------------------------------------
+      - script: |
+          pytest tests/ \
+            --junitxml=test-results/junit.xml \
+            --cov=databricks_bundles/src \
+            --cov-report=xml:test-results/coverage.xml \
+            --cov-report=html:test-results/htmlcov \
+            -v
+        displayName: 'Run Pytest'
+        workingDirectory: $(Build.SourcesDirectory)
+        continueOnError: false
+
+      # -----------------------------------------------------------------------
+      # Publish Test Results
+      # -----------------------------------------------------------------------
+      - task: PublishTestResults@2
+        displayName: 'Publish Test Results'
+        condition: always()
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '**/junit.xml'
+          searchFolder: '$(Build.SourcesDirectory)/test-results'
+          mergeTestResults: true
+          failTaskOnFailedTests: true
+          testRunTitle: 'Pytest Unit Tests'
+
+      # -----------------------------------------------------------------------
+      # Publish Code Coverage
+      # -----------------------------------------------------------------------
+      - task: PublishCodeCoverageResults@1
+        displayName: 'Publish Code Coverage'
+        condition: always()
+        inputs:
+          codeCoverageTool: 'Cobertura'
+          summaryFileLocation: '$(Build.SourcesDirectory)/test-results/coverage.xml'
+          reportDirectory: '$(Build.SourcesDirectory)/test-results/htmlcov'
+          failIfCoverageEmpty: false

@@ -1,0 +1,142 @@
+# =============================================================================
+# Databricks Jobs Configuration
+# =============================================================================
+# Workflow and job definitions for data processing.
+# =============================================================================
+
+resources:
+  jobs:
+    # -------------------------------------------------------------------------
+    # Sales Data Ingestion Job
+    # -------------------------------------------------------------------------
+    sales_ingestion_job:
+      name: "Sales Data Ingestion"
+      description: "Ingests raw sales data from landing zone to bronze layer"
+      
+      # Email notifications
+      email_notifications:
+        on_failure:
+          - data-platform-alerts@company.com
+      
+      # Job clusters
+      job_clusters:
+        - job_cluster_key: ingestion_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "Standard_DS3_v2"
+            num_workers: 2
+            spark_conf:
+              spark.databricks.delta.preview.enabled: "true"
+            azure_attributes:
+              availability: ON_DEMAND_AZURE
+              first_on_demand: 1
+              spot_bid_max_price: -1
+      
+      # Tasks
+      tasks:
+        - task_key: ingest_sales_data
+          job_cluster_key: ingestion_cluster
+          notebook_task:
+            notebook_path: ../src/notebooks/bronze/ingest_sales_data
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+          
+        - task_key: validate_ingestion
+          depends_on:
+            - task_key: ingest_sales_data
+          job_cluster_key: ingestion_cluster
+          notebook_task:
+            notebook_path: ../src/notebooks/bronze/validate_ingestion
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+    # -------------------------------------------------------------------------
+    # Data Transformation Job
+    # -------------------------------------------------------------------------
+    data_transformation_job:
+      name: "Data Transformation Pipeline"
+      description: "Transforms data from bronze to silver and gold layers"
+      
+      email_notifications:
+        on_failure:
+          - data-platform-alerts@company.com
+        on_success:
+          - data-platform-success@company.com
+      
+      job_clusters:
+        - job_cluster_key: transform_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "Standard_DS4_v2"
+            num_workers: 4
+            spark_conf:
+              spark.databricks.delta.optimizeWrite.enabled: "true"
+              spark.databricks.delta.autoCompact.enabled: "true"
+            azure_attributes:
+              availability: SPOT_WITH_FALLBACK_AZURE
+              first_on_demand: 1
+              spot_bid_max_price: -1
+      
+      tasks:
+        - task_key: bronze_to_silver
+          job_cluster_key: transform_cluster
+          notebook_task:
+            notebook_path: ../src/notebooks/silver/transform_sales
+            base_parameters:
+              source_catalog: ${var.catalog}
+              target_catalog: silver
+          
+        - task_key: silver_to_gold
+          depends_on:
+            - task_key: bronze_to_silver
+          job_cluster_key: transform_cluster
+          notebook_task:
+            notebook_path: ../src/notebooks/gold/aggregate_sales
+            base_parameters:
+              source_catalog: silver
+              target_catalog: gold
+          
+        - task_key: update_ml_features
+          depends_on:
+            - task_key: silver_to_gold
+          job_cluster_key: transform_cluster
+          notebook_task:
+            notebook_path: ../src/notebooks/gold/update_ml_features
+            base_parameters:
+              catalog: gold
+              schema: ml_features
+
+    # -------------------------------------------------------------------------
+    # DQx Post-Deployment Checks Job
+    # -------------------------------------------------------------------------
+    dqx_post_deployment_checks:
+      name: "DQx Post-Deployment Quality Checks"
+      description: "Runs data quality checks after deployment"
+      
+      email_notifications:
+        on_failure:
+          - data-quality-alerts@company.com
+      
+      job_clusters:
+        - job_cluster_key: dqx_cluster
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "Standard_DS3_v2"
+            num_workers: 1
+      
+      tasks:
+        - task_key: run_quality_checks
+          job_cluster_key: dqx_cluster
+          notebook_task:
+            notebook_path: ../src/notebooks/dqx/run_quality_checks
+            base_parameters:
+              config_path: /Workspace/${workspace.root_path}/dqx/dqx_config.yml
+          
+        - task_key: publish_results
+          depends_on:
+            - task_key: run_quality_checks
+          job_cluster_key: dqx_cluster
+          notebook_task:
+            notebook_path: ../src/notebooks/dqx/publish_results

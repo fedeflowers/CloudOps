@@ -1,0 +1,86 @@
+# =============================================================================
+# DABs Stage Template - Databricks Asset Bundles Deployment
+# =============================================================================
+# Deploys workflows, libraries, and Delta Live Tables using DABs.
+# =============================================================================
+
+parameters:
+  - name: environment
+    type: string
+    default: 'dev'
+
+jobs:
+  - job: DeployBundle
+    displayName: 'Deploy Databricks Bundle'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    variables:
+      - name: targetEnvironment
+        ${{ if eq(parameters.environment, 'main') }}:
+          value: 'prod'
+        ${{ else }}:
+          value: 'dev'
+    
+    steps:
+      # -----------------------------------------------------------------------
+      # Install Databricks CLI
+      # -----------------------------------------------------------------------
+      - script: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+        displayName: 'Install Databricks CLI'
+
+      # -----------------------------------------------------------------------
+      # Configure Databricks CLI
+      # -----------------------------------------------------------------------
+      - script: |
+          echo "[DEFAULT]" > ~/.databrickscfg
+          echo "host = $(DATABRICKS_HOST)" >> ~/.databrickscfg
+          echo "token = $(DATABRICKS_TOKEN)" >> ~/.databrickscfg
+        displayName: 'Configure Databricks CLI'
+        env:
+          DATABRICKS_HOST: $(DATABRICKS_HOST)
+          DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+
+      # -----------------------------------------------------------------------
+      # Validate Bundle
+      # -----------------------------------------------------------------------
+      - script: |
+          cd databricks_bundles
+          databricks bundle validate --target $(targetEnvironment)
+        displayName: 'Validate Bundle'
+        workingDirectory: $(Build.SourcesDirectory)
+        env:
+          DATABRICKS_HOST: $(DATABRICKS_HOST)
+          DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+
+      # -----------------------------------------------------------------------
+      # Deploy Bundle
+      # -----------------------------------------------------------------------
+      - script: |
+          cd databricks_bundles
+          databricks bundle deploy --target $(targetEnvironment)
+        displayName: 'Deploy Bundle'
+        workingDirectory: $(Build.SourcesDirectory)
+        env:
+          DATABRICKS_HOST: $(DATABRICKS_HOST)
+          DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+
+      # -----------------------------------------------------------------------
+      # Output Deployment Summary
+      # -----------------------------------------------------------------------
+      - script: |
+          echo "=========================================="
+          echo "Deployment Summary"
+          echo "=========================================="
+          echo "Environment: $(targetEnvironment)"
+          echo "Workspace: $(DATABRICKS_HOST)"
+          echo "Bundle: databricks_bundles"
+          echo "=========================================="
+          cd databricks_bundles
+          databricks bundle summary --target $(targetEnvironment) || true
+        displayName: 'Deployment Summary'
+        workingDirectory: $(Build.SourcesDirectory)
+        env:
+          DATABRICKS_HOST: $(DATABRICKS_HOST)
+          DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)

@@ -1,0 +1,149 @@
+# =============================================================================
+# Terraform Stage Template - Infrastructure Provisioning
+# =============================================================================
+# Manages Unity Catalog governance objects using Terraform.
+# Auto-approves on main branch, requires manual approval on feature branches.
+# =============================================================================
+
+parameters:
+  - name: terraformVersion
+    type: string
+    default: '1.6.0'
+  - name: environment
+    type: string
+    default: 'dev'
+
+jobs:
+  - job: TerraformPlan
+    displayName: 'Terraform Plan'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+      # -----------------------------------------------------------------------
+      # Install Terraform
+      # -----------------------------------------------------------------------
+      - task: TerraformInstaller@1
+        displayName: 'Install Terraform ${{ parameters.terraformVersion }}'
+        inputs:
+          terraformVersion: '${{ parameters.terraformVersion }}'
+
+      # -----------------------------------------------------------------------
+      # Terraform Init
+      # -----------------------------------------------------------------------
+      - task: TerraformTaskV4@4
+        displayName: 'Terraform Init'
+        inputs:
+          provider: 'azurerm'
+          command: 'init'
+          workingDirectory: '$(Build.SourcesDirectory)/terraform'
+          backendServiceArm: 'Azure-Service-Connection'
+          backendAzureRmResourceGroupName: '$(TF_BACKEND_RESOURCE_GROUP)'
+          backendAzureRmStorageAccountName: '$(TF_BACKEND_STORAGE_ACCOUNT)'
+          backendAzureRmContainerName: '$(TF_BACKEND_CONTAINER)'
+          backendAzureRmKey: '$(TF_BACKEND_KEY)'
+
+      # -----------------------------------------------------------------------
+      # Terraform Validate
+      # -----------------------------------------------------------------------
+      - task: TerraformTaskV4@4
+        displayName: 'Terraform Validate'
+        inputs:
+          provider: 'azurerm'
+          command: 'validate'
+          workingDirectory: '$(Build.SourcesDirectory)/terraform'
+
+      # -----------------------------------------------------------------------
+      # Terraform Plan
+      # -----------------------------------------------------------------------
+      - task: TerraformTaskV4@4
+        displayName: 'Terraform Plan'
+        inputs:
+          provider: 'azurerm'
+          command: 'plan'
+          workingDirectory: '$(Build.SourcesDirectory)/terraform'
+          commandOptions: '-var-file=environments/${{ parameters.environment }}.tfvars -out=tfplan'
+          environmentServiceNameAzureRM: 'Azure-Service-Connection'
+        env:
+          ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+          ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+          ARM_TENANT_ID: $(ARM_TENANT_ID)
+          ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+          DATABRICKS_HOST: $(DATABRICKS_HOST)
+          DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+
+      # -----------------------------------------------------------------------
+      # Publish Plan Artifact
+      # -----------------------------------------------------------------------
+      - task: PublishPipelineArtifact@1
+        displayName: 'Publish Terraform Plan'
+        inputs:
+          targetPath: '$(Build.SourcesDirectory)/terraform/tfplan'
+          artifact: 'terraform-plan'
+          publishLocation: 'pipeline'
+
+  # ---------------------------------------------------------------------------
+  # Terraform Apply Job
+  # ---------------------------------------------------------------------------
+  - job: TerraformApply
+    displayName: 'Terraform Apply'
+    dependsOn: TerraformPlan
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    # Manual approval for non-main branches
+    ${{ if ne(parameters.environment, 'main') }}:
+      environment: 'terraform-approval'
+    
+    steps:
+      # -----------------------------------------------------------------------
+      # Install Terraform
+      # -----------------------------------------------------------------------
+      - task: TerraformInstaller@1
+        displayName: 'Install Terraform ${{ parameters.terraformVersion }}'
+        inputs:
+          terraformVersion: '${{ parameters.terraformVersion }}'
+
+      # -----------------------------------------------------------------------
+      # Download Plan Artifact
+      # -----------------------------------------------------------------------
+      - task: DownloadPipelineArtifact@2
+        displayName: 'Download Terraform Plan'
+        inputs:
+          buildType: 'current'
+          artifactName: 'terraform-plan'
+          targetPath: '$(Build.SourcesDirectory)/terraform'
+
+      # -----------------------------------------------------------------------
+      # Terraform Init
+      # -----------------------------------------------------------------------
+      - task: TerraformTaskV4@4
+        displayName: 'Terraform Init'
+        inputs:
+          provider: 'azurerm'
+          command: 'init'
+          workingDirectory: '$(Build.SourcesDirectory)/terraform'
+          backendServiceArm: 'Azure-Service-Connection'
+          backendAzureRmResourceGroupName: '$(TF_BACKEND_RESOURCE_GROUP)'
+          backendAzureRmStorageAccountName: '$(TF_BACKEND_STORAGE_ACCOUNT)'
+          backendAzureRmContainerName: '$(TF_BACKEND_CONTAINER)'
+          backendAzureRmKey: '$(TF_BACKEND_KEY)'
+
+      # -----------------------------------------------------------------------
+      # Terraform Apply
+      # -----------------------------------------------------------------------
+      - task: TerraformTaskV4@4
+        displayName: 'Terraform Apply'
+        inputs:
+          provider: 'azurerm'
+          command: 'apply'
+          workingDirectory: '$(Build.SourcesDirectory)/terraform'
+          commandOptions: '-auto-approve tfplan'
+          environmentServiceNameAzureRM: 'Azure-Service-Connection'
+        env:
+          ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+          ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+          ARM_TENANT_ID: $(ARM_TENANT_ID)
+          ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+          DATABRICKS_HOST: $(DATABRICKS_HOST)
+          DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)

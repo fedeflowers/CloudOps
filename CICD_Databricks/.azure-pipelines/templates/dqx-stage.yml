@@ -1,0 +1,60 @@
+# =============================================================================
+# DQx Stage Template - Data Quality Validation
+# =============================================================================
+# Triggers post-deployment data quality checks and validates results.
+# =============================================================================
+
+parameters:
+  - name: environment
+    type: string
+    default: 'prod'
+
+jobs:
+  - job: DataQualityChecks
+    displayName: 'Run Data Quality Checks'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+      # -----------------------------------------------------------------------
+      # Install Dependencies
+      # -----------------------------------------------------------------------
+      - task: UsePythonVersion@0
+        displayName: 'Use Python 3.10'
+        inputs:
+          versionSpec: '3.10'
+          addToPath: true
+
+      - script: |
+          pip install databricks-sdk requests
+        displayName: 'Install Dependencies'
+
+      # -----------------------------------------------------------------------
+      # Trigger DQx Workflow
+      # -----------------------------------------------------------------------
+      - script: |
+          python scripts/trigger_dqx_workflow.py \
+            --host "$(DATABRICKS_HOST)" \
+            --token "$(DATABRICKS_TOKEN)" \
+            --workflow-name "dqx_post_deployment_checks" \
+            --timeout 1800
+        displayName: 'Trigger DQx Workflow'
+        workingDirectory: $(Build.SourcesDirectory)
+        env:
+          DATABRICKS_HOST: $(DATABRICKS_HOST)
+          DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)
+
+      # -----------------------------------------------------------------------
+      # Validate Quality Gate
+      # -----------------------------------------------------------------------
+      - script: |
+          python scripts/validate_dqx_results.py \
+            --host "$(DATABRICKS_HOST)" \
+            --token "$(DATABRICKS_TOKEN)" \
+            --results-table "dqx.quality_results" \
+            --fail-on-error
+        displayName: 'Validate Quality Gate'
+        workingDirectory: $(Build.SourcesDirectory)
+        env:
+          DATABRICKS_HOST: $(DATABRICKS_HOST)
+          DATABRICKS_TOKEN: $(DATABRICKS_TOKEN)

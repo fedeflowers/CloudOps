@@ -1,0 +1,142 @@
+# =============================================================================
+# Environment Configuration
+# =============================================================================
+# This file contains all environment-specific configurations.
+# Update these values according to your Azure and Databricks setup.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Azure Configuration
+# -----------------------------------------------------------------------------
+azure:
+  subscription_id: "12345678-1234-1234-1234-123456789abc"
+  tenant_id: "87654321-4321-4321-4321-cba987654321"
+  resource_group: "rg-databricks-cicd"
+  location: "westeurope"
+  
+  # Service Principal for automation
+  service_principal:
+    client_id: "sp-client-id-placeholder"
+    # client_secret is stored in Key Vault, not here
+
+  # Key Vault for secrets
+  key_vault:
+    name: "kv-databricks-cicd"
+    resource_group: "rg-databricks-cicd"
+
+  # Storage Account for Terraform state
+  terraform_backend:
+    storage_account: "stterraformstate"
+    container: "tfstate"
+    key: "databricks-cicd.tfstate"
+
+# -----------------------------------------------------------------------------
+# Databricks Workspaces
+# -----------------------------------------------------------------------------
+databricks:
+  dev:
+    workspace_url: "https://adb-1234567890123456.16.azuredatabricks.net"
+    workspace_id: "1234567890123456"
+    catalog: "dev_catalog"
+    
+  prod:
+    workspace_url: "https://adb-9876543210987654.16.azuredatabricks.net"
+    workspace_id: "9876543210987654"
+    catalog: "prod_catalog"
+
+# -----------------------------------------------------------------------------
+# Unity Catalog Configuration
+# -----------------------------------------------------------------------------
+unity_catalog:
+  metastore_id: "metastore-id-placeholder"
+  
+  # Storage for Unity Catalog
+  storage:
+    account_name: "stadatabrickslake"
+    container: "unity-catalog"
+    
+  # Catalogs to create
+  catalogs:
+    - name: "bronze"
+      comment: "Raw data ingestion layer"
+    - name: "silver"
+      comment: "Cleaned and transformed data"
+    - name: "gold"
+      comment: "Business-ready aggregated data"
+      
+  # Schemas per catalog
+  schemas:
+    bronze:
+      - name: "raw_sales"
+      - name: "raw_inventory"
+      - name: "raw_customers"
+    silver:
+      - name: "cleaned_sales"
+      - name: "cleaned_inventory"
+      - name: "cleaned_customers"
+    gold:
+      - name: "analytics"
+      - name: "reporting"
+      - name: "ml_features"
+
+# -----------------------------------------------------------------------------
+# Azure DevOps Configuration
+# -----------------------------------------------------------------------------
+azure_devops:
+  organization: "your-azure-devops-org"
+  project: "Databricks-CICD"
+  
+  # Variable Groups (linked to Key Vault)
+  variable_groups:
+    - name: "databricks-credentials"
+      description: "Databricks workspace credentials"
+      secrets:
+        - DATABRICKS_HOST
+        - DATABRICKS_TOKEN
+        
+    - name: "azure-credentials"
+      description: "Azure Service Principal credentials"
+      secrets:
+        - ARM_CLIENT_ID
+        - ARM_CLIENT_SECRET
+        - ARM_TENANT_ID
+        - ARM_SUBSCRIPTION_ID
+        
+    - name: "terraform-backend"
+      description: "Terraform state storage configuration"
+      secrets:
+        - TF_BACKEND_STORAGE_ACCOUNT
+        - TF_BACKEND_CONTAINER
+        - TF_BACKEND_KEY
+        - TF_BACKEND_ACCESS_KEY
+
+# -----------------------------------------------------------------------------
+# Pipeline Configuration
+# -----------------------------------------------------------------------------
+pipeline:
+  # Agent pool to use
+  agent_pool: "Azure Pipelines"
+  vm_image: "ubuntu-latest"
+  
+  # Python version for testing
+  python_version: "3.10"
+  
+  # Terraform version
+  terraform_version: "1.6.0"
+  
+  # Databricks CLI version
+  databricks_cli_version: "0.18.0"
+
+# -----------------------------------------------------------------------------
+# DQx (Data Quality) Configuration  
+# -----------------------------------------------------------------------------
+dqx:
+  enabled: true
+  workflow_name: "dqx_post_deployment_checks"
+  timeout_minutes: 30
+  
+  # Quality thresholds
+  thresholds:
+    row_count_deviation_pct: 10
+    freshness_hours: 24
+    null_tolerance_pct: 5
