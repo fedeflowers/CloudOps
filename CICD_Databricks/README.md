@@ -200,14 +200,12 @@ CICD_Databricks/
 ├── databricks_bundles/         # Databricks Asset Bundles
 │   ├── databricks.yml          # Bundle configuration
 │   ├── resources/
-│   │   ├── jobs.yml            # Workflow definitions
-│   │   └── dlt_pipelines.yml   # DLT pipeline definitions
+│   │   └── jobs.yml            # Workflow definitions
 │   └── src/
 │       └── notebooks/          # Databricks notebooks
 │           ├── bronze/
 │           ├── silver/
-│           ├── gold/
-│           └── dlt/
+│           └── gold/
 │
 ├── tests/                      # Unit tests
 │   ├── pytest.ini
@@ -286,7 +284,6 @@ databricks bundle deploy --target prod
 
 **Resources Deployed**:
 - Workflows/Jobs
-- DLT Pipelines
 - Python libraries
 - Notebooks
 
